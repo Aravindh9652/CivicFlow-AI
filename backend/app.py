@@ -20,7 +20,7 @@ SENDER_EMAIL = os.getenv("SENDER_EMAIL")
 SENDER_PASSWORD = os.getenv("SENDER_PASSWORD")
 
 # Same email for all departments (hackathon demo)
-AUTHORITY_EMAIL = "grievancenet@gmail.com"
+AUTHORITY_EMAIL = "civicflow.grievance.ai@gmail.com"
 
 # ---------------- EMAIL HELPER ----------------
 def send_email(to_email, subject, body, attachments=None):
