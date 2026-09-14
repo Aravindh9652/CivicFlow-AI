@@ -1,4 +1,4 @@
-import { auth } from "./firebase";
+import { auth, db, storage } from "./firebase";
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
@@ -10,7 +10,6 @@ import { useState, useEffect } from "react";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import "./App.css";
-import { db } from "./firebase";
 import {
   collection,
   addDoc,
@@ -264,16 +263,35 @@ const register = async () => {
     if (res.ok) {
       // ✅ SAVE TO FIRESTORE
       await addDoc(collection(db, "grievances"), {
-        userId: user.uid,
-        problem: problem,
-        city: city,
-        mailBody: mailBody,
-        detailedLocation: detailedLocation,
-        latitude: coords?.lat || "",
-        longitude: coords?.lng || "",
-        status: "Pending",
-        createdAt: serverTimestamp(),
-      });
+  userId: user.uid,
+
+  // Original grievance data
+  problem,
+  city,
+  mailBody,
+  detailedLocation,
+  latitude: coords?.lat ?? null,
+  longitude: coords?.lng ?? null,
+
+  // Existing workflow
+  status: "Pending",
+  createdAt: serverTimestamp(),
+
+  // AI grievance intelligence
+  aiUsed: aiData?.aiUsed ?? false,
+  department: aiData?.department ?? "General",
+  category: aiData?.category ?? "Uncategorized",
+  summary: aiData?.summary ?? "",
+  severity: aiData?.severity ?? "Medium",
+  priorityScore: aiData?.priorityScore ?? 50,
+  priorityReason: aiData?.priorityReason ?? "",
+  routingReason: aiData?.routingReason ?? "",
+  confidence: aiData?.confidence ?? 0,
+
+  // Emergency intelligence
+  emergency: aiData?.emergency ?? false,
+  emergencyReason: aiData?.emergencyReason ?? ""
+});
 
       alert("✅ Grievance submitted successfully");
       setPage(3); // Go to Status page
