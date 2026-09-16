@@ -12,7 +12,6 @@ import {
   addDoc,
   serverTimestamp,
   query,
-  where,
   onSnapshot,
   doc,
   setDoc,
@@ -82,7 +81,16 @@ export default function App() {
   const [grievances, setGrievances] = useState([]);
   const [allGrievances, setAllGrievances] = useState([]);
   const [corpus, setCorpus] = useState([]);
-  const [selectedGrievance, setSelectedGrievance] = useState(null);
+  const [selectedGrievanceId, setSelectedGrievanceId] = useState(null);
+
+  const selectedGrievance = useMemo(() => {
+    if (!selectedGrievanceId) return null;
+    return (
+      grievances.find((g) => g.id === selectedGrievanceId) ||
+      allGrievances.find((g) => g.id === selectedGrievanceId) ||
+      null
+    );
+  }, [selectedGrievanceId, grievances, allGrievances]);
 
   const [isAdmin, setIsAdmin] = useState(false);
   const [listening, setListening] = useState(false);
@@ -116,18 +124,23 @@ export default function App() {
       return;
     }
 
-    const q = query(
-      collection(db, "grievances"),
-      where("userId", "==", user.uid)
-    );
+    const mail = user.email?.toLowerCase() || "";
+    const q = query(collection(db, "grievances"));
 
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const list = snapshot.docs.map((d) => ({
-          id: d.id,
-          ...d.data(),
-        }));
+        const list = snapshot.docs
+          .map((d) => ({
+            id: d.id,
+            ...d.data(),
+          }))
+          .filter(
+            (g) =>
+              g.userId === user.uid ||
+              g.citizenId === user.uid ||
+              (mail && g.citizenEmail?.toLowerCase() === mail)
+          );
         list.sort((a, b) => {
           const ta = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0;
           const tb = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0;
@@ -318,7 +331,7 @@ export default function App() {
     setCoords(null);
     setDetailedLocation("");
     setDuplicates([]);
-    setSelectedGrievance(null);
+    setSelectedGrievanceId(null);
     setAuthError("");
   };
 
@@ -1242,7 +1255,7 @@ export default function App() {
                       </span>
                     </p>
                     <p className="muted">SLA: {st.breached ? "SLA BREACHED" : st.label}</p>
-                    <button className="btn ghost" style={{ marginTop: 8 }} onClick={() => setSelectedGrievance(g)}>
+                    <button className="btn ghost" style={{ marginTop: 8 }} onClick={() => setSelectedGrievanceId(g.id)}>
                       🔍 View Full Details & Timeline
                     </button>
                   </div>
@@ -1295,11 +1308,11 @@ export default function App() {
 
       {/* Complaint Details Modal */}
       {selectedGrievance && (
-        <div className="modal-overlay" onClick={() => setSelectedGrievance(null)}>
+        <div className="modal-overlay" onClick={() => setSelectedGrievanceId(null)}>
           <div className="modal-card card" onClick={(e) => e.stopPropagation()}>
             <div className="row space-between">
               <h2>Grievance Details ({`CF-${selectedGrievance.id.substring(0, 8).toUpperCase()}`})</h2>
-              <button className="btn ghost" onClick={() => setSelectedGrievance(null)}>✕ Close</button>
+              <button className="btn ghost" onClick={() => setSelectedGrievanceId(null)}>✕ Close</button>
             </div>
             <hr style={{ borderColor: "rgba(255,255,255,0.1)", margin: "12px 0" }} />
             
