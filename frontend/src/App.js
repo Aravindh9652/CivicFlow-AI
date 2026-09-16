@@ -202,24 +202,51 @@ export default function App() {
       return;
     }
 
-    if (!email.includes("@")) {
+    const mailClean = email.trim().toLowerCase();
+    if (!mailClean.includes("@")) {
       setAuthError("Please enter a valid email address");
       return;
     }
 
+    if (authMode === "admin" && !ADMIN_EMAILS.includes(mailClean)) {
+      setAuthError("Access denied: Email is not on the authorized Admin whitelist.");
+      return;
+    }
+
     try {
-      const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
+      let cred;
+      try {
+        cred = await signInWithEmailAndPassword(auth, mailClean, password);
+      } catch (err) {
+        // If signing in as admin and account doesn't exist in Firebase Auth yet, auto-initialize whitelisted admin account
+        if (authMode === "admin" && ADMIN_EMAILS.includes(mailClean)) {
+          cred = await createUserWithEmailAndPassword(auth, mailClean, password);
+          await setDoc(doc(db, "users", cred.user.uid), {
+            name: "Authority Command Center Admin",
+            email: mailClean,
+            role: "admin",
+            createdAt: serverTimestamp(),
+          });
+        } else {
+          throw err;
+        }
+      }
+
       setAuthError("");
       if (authMode === "admin") {
-        const mail = cred.user?.email?.toLowerCase() || "";
-        if (!ADMIN_EMAILS.includes(mail)) {
+        const loggedMail = cred.user?.email?.toLowerCase() || "";
+        if (!ADMIN_EMAILS.includes(loggedMail)) {
           await signOut(auth);
           setAuthError("Access denied: Not an authorized authority admin account.");
           return;
         }
       }
     } catch (err) {
-      setAuthError(err.message);
+      if (err.code === "auth/invalid-credential" || err.code === "auth/user-not-found" || err.code === "auth/wrong-password") {
+        setAuthError("Invalid email or password. Please check your credentials.");
+      } else {
+        setAuthError(err.message || "Authentication error occurred.");
+      }
     }
   };
 
