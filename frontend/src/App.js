@@ -1240,18 +1240,25 @@ export default function App() {
         </div>
 
         <aside className="sidebar">
-          <div className="card small">
-            <h4>Reporting Tips</h4>
-            <ul>
-              <li>Be concise and provide landmarks or GPS.</li>
-              <li>Attach photos for faster authority response.</li>
-              <li>For immediate danger, call 112 emergency.</li>
+          <div className="card small tip-card">
+            <h4>💡 Quick Tips</h4>
+            <ul className="tip-list">
+              <li>✓ Be clear and concise in your description</li>
+              <li>✓ Include exact location details</li>
+              <li>✓ Attach photos for faster verification</li>
+              <li>✓ Use the map to pinpoint the spot</li>
             </ul>
           </div>
-          <div className="card small">
-            <h4>System Status</h4>
+          <div className="card small tip-card">
+            <h4>🤖 AI Assistant</h4>
             <p className="muted">
-              Hybrid Local AI + Cloud Gemini active.
+              Powered by Google Gemini AI to help you draft professional grievance emails automatically.
+            </p>
+          </div>
+          <div className="card small tip-card">
+            <h4>🔒 Privacy</h4>
+            <p className="muted">
+              Your data is secure. Nothing is sent without your explicit action.
             </p>
           </div>
         </aside>
