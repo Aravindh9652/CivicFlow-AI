@@ -438,11 +438,58 @@ body::before {
 }
 
 .ai-preview {
-  background: #ffffff08;
-  border: 1px solid #ffffff1a;
+  animation: slideIn 0.4s ease-out, glowPulse 2.5s ease-in-out infinite;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(240, 147, 251, 0.1));
+  border: 2px solid rgba(102, 126, 234, 0.4);
   border-radius: var(--border-radius-md);
-  padding: 18px;
-  margin-top: 16px;
+  box-shadow: 0 0 30px rgba(102, 126, 234, 0.25), 0 0 50px rgba(240, 147, 251, 0.15);
+  margin-top: 24px;
+  padding: 24px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 0 30px rgba(102, 126, 234, 0.25), 0 0 50px rgba(240, 147, 251, 0.15); }
+  50% { box-shadow: 0 0 45px rgba(102, 126, 234, 0.5), 0 0 75px rgba(240, 147, 251, 0.3); }
+}
+
+.ai-preview h3 {
+  color: #a78bfa;
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0 0 14px 0;
+  letter-spacing: -0.3px;
+}
+
+.ai-preview p {
+  color: #c7cce8;
+  line-height: 1.6;
+  margin: 10px 0;
+}
+
+.ai-preview strong {
+  color: #ffffff;
+}
+
+.ai-preview .textarea {
+  background: rgba(10, 14, 39, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--border-radius-sm);
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  padding: 14px 18px;
+  margin-top: 10px;
+  transition: all 0.3s ease;
+}
+
+.ai-preview .textarea:focus {
+  background: rgba(10, 14, 39, 0.85);
+  border-color: #a78bfa;
+  box-shadow: 0 0 20px rgba(167, 139, 250, 0.3);
 }
 
 .intel-grid { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
