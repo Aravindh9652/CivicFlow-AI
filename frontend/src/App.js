@@ -1119,13 +1119,16 @@ export default function App() {
 
           {page === 2 && (
             <div className="form">
-              <div className="row space-between">
-                <button className="btn secondary" onClick={getCurrentLocation}>📍 Capture GPS Location</button>
+              <h2>📍 Location Details</h2>
+              <p className="muted welcome-text">Pin your exact location for faster resolution</p>
+
+              <div className="row space-between" style={{ marginTop: 16 }}>
+                <button className="btn secondary" onClick={getCurrentLocation}>📍 Use Current Location</button>
                 <button className="btn ghost" onClick={() => setPage(1)}>← Back</button>
               </div>
 
               {coords && (
-                <p className="muted">Coordinates: {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}</p>
+                <p className="muted" style={{ marginTop: 8 }}>Lat: {coords.lat.toFixed(6)} | Lng: {coords.lng.toFixed(6)}</p>
               )}
 
               <div className="map-wrap">
@@ -1134,18 +1137,39 @@ export default function App() {
                 </Suspense>
               </div>
 
-              <label className="label" htmlFor="landmark">Detailed Location / Landmark</label>
-              <textarea
+              <label className="label" htmlFor="landmark">Detailed location</label>
+              <input
                 id="landmark"
-                rows="2"
-                className="input textarea"
-                placeholder="E.g. Near Benz Circle, Opposite Supermarket"
+                type="text"
+                className="input"
+                placeholder="E.g., Near ABC Hospital, 2nd cross street"
                 value={detailedLocation}
                 onChange={(e) => setDetailedLocation(e.target.value)}
               />
 
+              <label className="label" htmlFor="mail-body-step2">Mail body</label>
+              <textarea
+                id="mail-body-step2"
+                rows={8}
+                className="input textarea"
+                placeholder="Auto-generated grievance mail report..."
+                value={mailBody}
+                onChange={(e) => setMailBody(e.target.value)}
+              />
+
+              <label className="label" htmlFor="photo-step2">Attach photo (optional)</label>
+              <input
+                id="photo-step2"
+                className="input file"
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={(e) => onPickImage(e.target.files[0])}
+              />
+              {imagePreview && <img className="preview-img" src={imagePreview} alt="Selected evidence" />}
+
               {duplicates.length > 0 && (
-                <div className="ai-preview">
+                <div className="ai-preview" style={{ marginTop: 20 }}>
                   <h3>Possible Duplicate Incident Detected</h3>
                   {duplicates.map((d) => (
                     <div key={d.id} className="grievance-card">
@@ -1160,21 +1184,8 @@ export default function App() {
                 </div>
               )}
 
-              <div className="actions">
-                <button
-                  className="btn secondary"
-                  onClick={() =>
-                    checkDuplicates({
-                      problem,
-                      department: aiData?.department,
-                      latitude: coords?.lat,
-                      longitude: coords?.lng,
-                    })
-                  }
-                >
-                  Check Duplicates
-                </button>
-                <button className="btn primary" onClick={sendEmail}>📤 Submit Complaint</button>
+              <div className="actions" style={{ marginTop: 24 }}>
+                <button className="btn primary" onClick={sendEmail}>📤 Submit Grievance</button>
               </div>
             </div>
           )}
