@@ -1005,30 +1005,6 @@ export default function App() {
               <div className="tip-highlight">
                 💡 <strong>Tip:</strong> Use our AI-powered assistant to automatically draft professional grievance emails based on your description.
               </div>
-
-              <div className="tips-grid">
-                <div className="tip-card">
-                  <h4>💡 Quick Tips</h4>
-                  <ul className="tip-list">
-                    <li>✓ Be clear and concise in your description</li>
-                    <li>✓ Include exact location details</li>
-                    <li>✓ Attach photos for faster verification</li>
-                    <li>✓ Use the map to pinpoint the spot</li>
-                  </ul>
-                </div>
-                <div className="tip-card">
-                  <h4>🤖 AI Assistant</h4>
-                  <p className="muted">
-                    Powered by Google Gemini AI to help you draft professional grievance emails automatically.
-                  </p>
-                </div>
-                <div className="tip-card">
-                  <h4>🔒 Privacy</h4>
-                  <p className="muted">
-                    Your data is secure. Nothing is sent without your explicit action.
-                  </p>
-                </div>
-              </div>
             </div>
           )}
 
