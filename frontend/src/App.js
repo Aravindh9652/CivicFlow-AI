@@ -295,6 +295,7 @@ export default function App() {
     setAuthError("");
   };
 
+  // eslint-disable-next-line no-unused-vars
   const generateMail = async () => {
     if (!problem.trim()) {
       alert("Please describe your problem first");
@@ -1049,12 +1050,9 @@ export default function App() {
 
               <div className="actions">
                 <button className="btn primary" onClick={analyzeMultimodal} disabled={loading}>
-                  {loading ? "Analyzing…" : "🤖 Analyze (Local AI + Gemini)"}
+                  {loading ? "Analyzing with AI…" : "🤖 Analyze Issue with AI"}
                 </button>
-                <button className="btn ghost" onClick={generateMail} disabled={loading}>
-                  Gemini Analysis Only
-                </button>
-                {aiData && (
+                {aiData ? (
                   <button
                     className="btn secondary"
                     onClick={() => {
@@ -1069,10 +1067,11 @@ export default function App() {
                   >
                     Proceed to Location & Submit →
                   </button>
+                ) : (
+                  <button className="btn ghost" onClick={() => setPage(2)}>
+                    Skip AI & proceed directly →
+                  </button>
                 )}
-                <button className="btn ghost" onClick={() => setPage(2)}>
-                  Continue without waiting for AI
-                </button>
               </div>
 
               {aiData && (
