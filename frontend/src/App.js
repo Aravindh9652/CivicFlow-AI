@@ -1076,26 +1076,42 @@ export default function App() {
 
               {aiData && (
                 <div className="ai-preview">
-                  <h3>Civic Intelligence Output</h3>
-                  <div className="intel-grid">
-                    <span className={badgeClass(aiData.severity, aiData.emergency)}>{aiData.department}</span>
-                    <span className={badgeClass(aiData.severity, false)}>{aiData.severity} · Priority {aiData.priorityScore}/100</span>
-                    {aiData.emergency && <span className="badge badge-emergency">EMERGENCY</span>}
+                  <h3>✨ AI-Generated Draft</h3>
+                  <p className="muted" style={{ marginBottom: 12 }}>Review the auto-generated grievance mail below</p>
+                  
+                  <textarea
+                    className="input textarea"
+                    rows={8}
+                    value={mailBody}
+                    onChange={(e) => setMailBody(e.target.value)}
+                  />
+
+                  <div className="ai-advice">
+                    <h3>💡 Recommended Action Steps</h3>
+                    <p>
+                      This appears to be a <strong>{aiData.department || "Municipal"}</strong> civic grievance. Include a photo, precise landmark, and GPS so authorities can verify and cluster related reports.
+                    </p>
+                    <div className="intel-grid" style={{ margin: "14px 0" }}>
+                      <span className={badgeClass(aiData.severity, aiData.emergency)}>📋 Department: {aiData.department}</span>
+                      <span className={badgeClass(aiData.severity, false)}>{aiData.severity} · Priority {aiData.priorityScore}/100</span>
+                      {aiData.emergency && <span className="badge badge-emergency">EMERGENCY</span>}
+                    </div>
+                    <p><strong>📝 Summary:</strong> {aiData.summary || problem}</p>
+                    {aiData.routingReason && <p><strong>Routing Reason:</strong> {aiData.routingReason}</p>}
+                    {aiData.priorityReason && <p><strong>Priority Rationale:</strong> {aiData.priorityReason}</p>}
+                    <p className="muted" style={{ marginTop: 10 }}>
+                      AI Confidence: {Math.round((aiData.confidence || 0) * 100)}% · Layer: {aiData.aiLayer || "hybrid"}
+                    </p>
                   </div>
-                  <p><strong>Routing Reason:</strong> {aiData.routingReason}</p>
-                  <p><strong>Priority Rationale:</strong> {aiData.priorityReason}</p>
-                  <p><strong>AI Confidence:</strong> {Math.round((aiData.confidence || 0) * 100)}%</p>
-                  <p className="muted">Layer: {aiData.aiLayer} · Local classifier: {aiData.localModel || aiData.localPreview?.localModel}</p>
+
                   {aiData.emergency && (
-                    <div className="emergency-banner">
+                    <div className="emergency-banner" style={{ marginTop: 16 }}>
                       <p><strong>Immediate Action:</strong> {aiData.immediateAction || "Call 112 for urgent response."}</p>
                       <p>{aiData.emergencyReason}</p>
                       <a className="btn primary" href={`tel:${aiData.emergencyPhone || "112"}`}>📞 Call Emergency 112</a>
                       <p className="muted">CivicFlow provides guidance; it has not automatically dispatched help.</p>
                     </div>
                   )}
-                  <h3>Drafted Authority Report</h3>
-                  <textarea className="input textarea" rows={5} value={mailBody} onChange={(e) => setMailBody(e.target.value)} />
                 </div>
               )}
             </div>
