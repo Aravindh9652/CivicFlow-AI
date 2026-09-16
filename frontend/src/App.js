@@ -1303,7 +1303,7 @@ export default function App() {
       )}
 
       <div className={`loading-overlay ${loading ? "visible" : ""}`} aria-live="polite">
-        Analyzing…
+        <div className="loading-text">Analyzing...</div>
       </div>
     </div>
   );
