@@ -235,13 +235,18 @@ export default function App() {
   };
 
   const register = async () => {
-    if (!email || !password || !name) {
-      setAuthError("All fields are required (Name, Email, Password)");
+    if (!email || !password || !name || !phone.trim()) {
+      setAuthError("All fields are required (Name, Email, Phone Number, Password)");
       return;
     }
 
     if (!email.includes("@")) {
       setAuthError("Please enter a valid email address");
+      return;
+    }
+
+    if (phone.trim().length < 7) {
+      setAuthError("Please enter a valid Phone Number (at least 7 digits)");
       return;
     }
 
@@ -258,7 +263,7 @@ export default function App() {
       await setDoc(doc(db, "users", uid), {
         name,
         email: email.trim(),
-        phone: phone || "",
+        phone: phone.trim(),
         role: "citizen",
         createdAt: serverTimestamp(),
       });
@@ -749,7 +754,7 @@ export default function App() {
               <br /><br />
               <input className="input" type="email" placeholder="Email Address *" value={email} onChange={(e) => setEmail(e.target.value)} />
               <br /><br />
-              <input className="input" placeholder="Phone Number (optional)" value={phone} onChange={(e) => setPhone(e.target.value)} />
+              <input className="input" type="tel" placeholder="Phone Number *" value={phone} onChange={(e) => setPhone(e.target.value)} required />
               <br /><br />
               <div className="password-wrap">
                 <input
@@ -964,15 +969,15 @@ export default function App() {
   return (
     <div className="app-container">
       <Starfield />
-      <header className="hero">
+      <header className="hero header-hero">
         <div className="hero-inner">
-          <h1>📢 CivicFlow AI</h1>
+          <h1>📢 AI Grievance Assistant</h1>
           <p className="tagline">
-            AI-powered civic intelligence — camera, voice, GPS, then route, prioritize, and track.
+            Report civic issues in plain language — AI helps you draft and submit clear grievance requests efficiently.
           </p>
         </div>
-        <button className="btn ghost" style={{ marginLeft: "auto" }} onClick={logout}>
-          Logout ({user.displayName || user.email})
+        <button className="btn logout-btn" onClick={logout}>
+          🚪 Logout
         </button>
       </header>
 
@@ -981,13 +986,48 @@ export default function App() {
           {page === 0 && (
             <div className="form">
               <h2>👋 Welcome to CivicFlow AI</h2>
-              <p className="muted">
-                Report a civic issue with voice, photo & GPS, or track submitted complaints in real-time.
+              <p className="muted welcome-text">
+                Your voice matters. Track your submitted complaints or raise a new grievance to make your community better.
               </p>
-              <div className="actions" style={{ marginTop: 20 }}>
-                <button className="btn primary" onClick={() => setPage(3)}>📊 My Complaints ({grievances.length})</button>
-                <button className="btn secondary" onClick={() => setPage(1)}>➕ Raise New Complaint</button>
-                <button className="btn ghost" onClick={() => setPage(4)}>💬 AI Assistant</button>
+              
+              <div className="actions welcome-actions" style={{ marginTop: 20 }}>
+                <button className="btn primary" onClick={() => setPage(3)}>
+                  📊 View My Complaints ({grievances.length})
+                </button>
+                <button className="btn secondary" onClick={() => setPage(1)}>
+                  ➕ Raise New Complaint
+                </button>
+                <button className="btn ghost" onClick={() => setPage(4)}>
+                  💬 AI Assistant
+                </button>
+              </div>
+
+              <div className="tip-highlight">
+                💡 <strong>Tip:</strong> Use our AI-powered assistant to automatically draft professional grievance emails based on your description.
+              </div>
+
+              <div className="tips-grid">
+                <div className="tip-card">
+                  <h4>💡 Quick Tips</h4>
+                  <ul className="tip-list">
+                    <li>✓ Be clear and concise in your description</li>
+                    <li>✓ Include exact location details</li>
+                    <li>✓ Attach photos for faster verification</li>
+                    <li>✓ Use the map to pinpoint the spot</li>
+                  </ul>
+                </div>
+                <div className="tip-card">
+                  <h4>🤖 AI Assistant</h4>
+                  <p className="muted">
+                    Powered by Google Gemini AI to help you draft professional grievance emails automatically.
+                  </p>
+                </div>
+                <div className="tip-card">
+                  <h4>🔒 Privacy</h4>
+                  <p className="muted">
+                    Your data is secure. Nothing is sent without your explicit action.
+                  </p>
+                </div>
               </div>
             </div>
           )}

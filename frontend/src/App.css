@@ -108,26 +108,134 @@ body::before {
   margin-bottom: var(--spacing-lg);
   border-radius: var(--border-radius-lg);
   border: 1px solid var(--border-color);
-  background: var(--gradient-glass);
+  background: linear-gradient(135deg, rgba(30, 20, 55, 0.75), rgba(50, 30, 85, 0.6));
   backdrop-filter: blur(20px);
   box-shadow: var(--shadow-md);
   position: relative;
   overflow: hidden;
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hero:hover {
+  transform: translateY(-2px);
+  border-color: rgba(240, 147, 251, 0.4);
+  box-shadow: 0 12px 40px rgba(102, 126, 234, 0.25), 0 0 35px rgba(240, 147, 251, 0.2);
 }
 
 .hero-inner h1 {
   margin: 0;
-  font-size: 2rem;
-  background: var(--gradient-primary);
+  font-size: 2.1rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #a78bfa, #c084fc, #f093fb);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
+  letter-spacing: -0.5px;
+  transition: all 0.3s ease;
+}
+
+.hero:hover .hero-inner h1 {
+  filter: drop-shadow(0 0 12px rgba(192, 132, 252, 0.4));
 }
 
 .tagline {
   margin-top: 6px;
-  color: var(--text-muted);
+  color: #c7cce8;
   font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.logout-btn {
+  margin-left: auto;
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  padding: 10px 22px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  backdrop-filter: blur(10px);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.logout-btn:hover {
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.45), rgba(240, 147, 251, 0.35));
+  border-color: rgba(240, 147, 251, 0.5);
+  color: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(124, 58, 237, 0.4);
+}
+
+.welcome-text {
+  font-size: 1.05rem;
+  color: #c7cce8;
+  line-height: 1.6;
+}
+
+.tip-highlight {
+  margin-top: 20px;
+  padding: 14px 18px;
+  background: rgba(102, 126, 234, 0.12);
+  border: 1px solid rgba(102, 126, 234, 0.25);
+  border-radius: var(--border-radius-md);
+  color: #e2e8f0;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  transition: all 0.3s ease;
+}
+
+.tip-highlight:hover {
+  background: rgba(102, 126, 234, 0.2);
+  border-color: rgba(240, 147, 251, 0.4);
+}
+
+.tips-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.tip-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--border-radius-md);
+  padding: 20px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(10px);
+}
+
+.tip-card:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(240, 147, 251, 0.35);
+  transform: translateY(-3px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3), 0 0 20px rgba(124, 58, 237, 0.15);
+}
+
+.tip-card h4 {
+  margin-top: 0;
+  margin-bottom: 12px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.tip-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.tip-list li {
+  margin-bottom: 8px;
+  font-size: 0.88rem;
+  color: #c7cce8;
+  line-height: 1.4;
 }
 
 .content {
