@@ -3,12 +3,38 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-   match /grievances/{id} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null;
+    function isSignedIn() {
+      return request.auth != null;
+    }
 
-      // Only admin can update
-      allow update: if request.auth.token.email == "admin@grievancenet.com";
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.email in [
+        'admin@grievancenet.com'
+      ];
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.auth.uid == userId
+        && request.resource.data.role == 'citizen';
+      allow update, delete: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    match /grievances/{id} {
+      // Citizens read their own grievances; Admin reads all.
+      allow read: if isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        resource.data.citizenId == request.auth.uid ||
+        isAdmin()
+      );
+
+      allow create: if isSignedIn() && (
+        request.resource.data.userId == request.auth.uid ||
+        request.resource.data.citizenId == request.auth.uid
+      );
+
+      allow update, delete: if isAdmin();
+    }
   }
-}
 }

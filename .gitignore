@@ -1,3 +1,7 @@
+# Python
+__pycache__/
+*.pyc
+
 # Logs
 logs
 *.log
@@ -64,6 +68,17 @@ node_modules/
 
 # dotenv environment variables file
 .env
+.env.local
+.env*.local
+**/serviceAccount*.json
+**/*credentials*.json
+backend/.env
+frontend/.env
+android/local.properties
+android/.gradle/
+android/app/build/
+*.apk
+*.aab
 
 # dataconnect generated files
 .dataconnect

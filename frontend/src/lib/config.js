@@ -1,0 +1,16 @@
+export const API_URL =
+  process.env.REACT_APP_API_URL || "http://localhost:5000";
+
+export const ADMIN_EMAILS = (
+  process.env.REACT_APP_ADMIN_EMAILS || "admin@grievancenet.com"
+)
+  .split(",")
+  .map((s) => s.trim().toLowerCase())
+  .filter(Boolean);
+
+export const SLA_DEFAULT = {
+  Critical: 15,
+  High: 120,
+  Medium: 1440,
+  Low: 4320,
+};
