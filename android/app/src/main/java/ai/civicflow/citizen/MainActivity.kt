@@ -9,18 +9,19 @@ import android.location.LocationManager
 import android.net.Uri
 import android.os.Bundle
 import android.speech.RecognizerIntent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.ui.graphics.asImageBitmap
-import android.graphics.Bitmap
-import java.io.File
-import java.io.FileOutputStream
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -28,12 +29,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -47,12 +51,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -60,6 +69,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import java.io.File
+import java.io.FileOutputStream
 import java.util.Locale
 import java.util.UUID
 
@@ -137,22 +148,148 @@ fun CivicNav() {
             }
             composable("camera") {
                 val ctx = LocalContext.current
-                val launcher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bmp ->
-                    if (bmp != null) {
-                        photoBmp = bmp
-                        val f = File(ctx.cacheDir, "civic-evidence.jpg")
-                        FileOutputStream(f).use { out -> bmp.compress(Bitmap.CompressFormat.JPEG, 82, out) }
-                        photoPath = f.absolutePath
+                var permissionGranted by remember {
+                    mutableStateOf(
+                        ContextCompat.checkSelfPermission(ctx, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+                    )
+                }
+
+                var tempPhotoFile by remember { mutableStateOf<File?>(null) }
+                var tempPhotoUri by remember { mutableStateOf<Uri?>(null) }
+
+                fun createTempFile(): Pair<File, Uri> {
+                    val file = File(ctx.cacheDir, "civic_evidence_${System.currentTimeMillis()}.jpg")
+                    val uri = FileProvider.getUriForFile(ctx, "${ctx.packageName}.fileprovider", file)
+                    return Pair(file, uri)
+                }
+
+                fun processAndSetImage(file: File?, fallbackBmp: Bitmap?) {
+                    val targetFile = file ?: File(ctx.cacheDir, "civic_evidence_${System.currentTimeMillis()}.jpg")
+                    val (compressedBmp, path) = compressAndSavePhoto(ctx, fallbackBmp, targetFile)
+                    if (compressedBmp != null && path != null) {
+                        photoBmp = compressedBmp
+                        photoPath = path
+                        Toast.makeText(ctx, "📷 Evidence captured and compressed successfully!", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(ctx, "Failed to capture image", Toast.LENGTH_SHORT).show()
                     }
                 }
-                ScreenScaffold {
-                    Text("Camera")
-                    Text("Capture civic evidence. The photo is attached to local AI analysis and Office Kit handoff.")
-                    Button(onClick = { launcher.launch(null) }) { Text("Open camera") }
-                    photoBmp?.let {
-                        Image(it.asImageBitmap(), contentDescription = "Civic evidence photo", modifier = Modifier.fillMaxWidth().height(220.dp))
+
+                val fullPhotoLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+                    if (success && tempPhotoFile != null) {
+                        processAndSetImage(tempPhotoFile, null)
                     }
-                    TextButton(onClick = { nav.popBackStack() }) { Text("Back") }
+                }
+
+                val previewPhotoLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bmp ->
+                    if (bmp != null) {
+                        val file = File(ctx.cacheDir, "civic_evidence_${System.currentTimeMillis()}.jpg")
+                        processAndSetImage(file, bmp)
+                    }
+                }
+
+                val cameraPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+                    permissionGranted = isGranted
+                    if (isGranted) {
+                        try {
+                            val (f, u) = createTempFile()
+                            tempPhotoFile = f
+                            tempPhotoUri = u
+                            fullPhotoLauncher.launch(u)
+                        } catch (_: Exception) {
+                            previewPhotoLauncher.launch(null)
+                        }
+                    } else {
+                        Toast.makeText(ctx, "Camera permission is required to capture evidence", Toast.LENGTH_LONG).show()
+                    }
+                }
+
+                fun launchCameraFlow() {
+                    if (ContextCompat.checkSelfPermission(ctx, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                        permissionGranted = true
+                        try {
+                            val (f, u) = createTempFile()
+                            tempPhotoFile = f
+                            tempPhotoUri = u
+                            fullPhotoLauncher.launch(u)
+                        } catch (_: Exception) {
+                            previewPhotoLauncher.launch(null)
+                        }
+                    } else {
+                        cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                    }
+                }
+
+                ScreenScaffold {
+                    Text("📸 Camera Evidence Intake", style = MaterialTheme.typography.titleLarge)
+                    Text("Capture clear photo evidence of potholes, water leaks, garbage, or structural hazards. The compressed photo is sent directly to the AI analysis pipeline.")
+
+                    if (photoBmp != null && photoPath != null) {
+                        val fileSizeKb = (File(photoPath!!).length() / 1024).toInt()
+                        Card(
+                            colors = CardDefaults.cardColors(CardBg),
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                        ) {
+                            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text("✅ Evidence Attached (${fileSizeKb} KB compressed)", style = MaterialTheme.typography.bodyMedium)
+                                Image(
+                                    bitmap = photoBmp!!.asImageBitmap(),
+                                    contentDescription = "Civic evidence photo",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(240.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .border(1.dp, Color(0x40667EEA), RoundedCornerShape(12.dp))
+                                )
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Button(
+                                        onClick = { launchCameraFlow() },
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text("📷 Retake Photo")
+                                    }
+                                    Button(
+                                        onClick = {
+                                            photoBmp = null
+                                            photoPath = null
+                                        },
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0x33EF4444)),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text("🗑️ Remove", color = Color(0xFFFCA5A5))
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        Card(
+                            colors = CardDefaults.cardColors(CardBg),
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                        ) {
+                            Column(
+                                Modifier.padding(24.dp).fillMaxWidth(),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Text("No image attached yet")
+                                Button(onClick = { launchCameraFlow() }) {
+                                    Text("📷 Open Camera")
+                                }
+                            }
+                        }
+                    }
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Button(
+                            onClick = { nav.navigate("raise") },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Done — Back to Complaint")
+                        }
+                    }
                 }
             }
             composable("voice") {
@@ -292,6 +429,32 @@ private fun ScreenScaffold(content: @Composable () -> Unit) {
     ) { content() }
 }
 
+private fun compressAndSavePhoto(ctx: Context, inputBitmap: Bitmap?, file: File): Pair<Bitmap?, String?> {
+    try {
+        val srcBmp = inputBitmap ?: if (file.exists()) BitmapFactory.decodeFile(file.absolutePath) else null
+        if (srcBmp == null) return Pair(null, null)
+
+        val maxDim = 1280
+        val scale = minOf(1f, maxDim.toFloat() / maxOf(srcBmp.width, srcBmp.height))
+        val scaledW = (srcBmp.width * scale).toInt().coerceAtLeast(1)
+        val scaledH = (srcBmp.height * scale).toInt().coerceAtLeast(1)
+
+        val scaledBmp = if (scale < 1f) {
+            Bitmap.createScaledBitmap(srcBmp, scaledW, scaledH, true)
+        } else {
+            srcBmp
+        }
+
+        FileOutputStream(file).use { out ->
+            scaledBmp.compress(Bitmap.CompressFormat.JPEG, 82, out)
+        }
+        return Pair(scaledBmp, file.absolutePath)
+    } catch (e: Exception) {
+        e.printStackTrace()
+        return Pair(inputBitmap, file.takeIf { it.exists() }?.absolutePath)
+    }
+}
+
 @Composable
 private fun RaiseScreen(
     problem: String,
@@ -308,17 +471,48 @@ private fun RaiseScreen(
     val scope = rememberCoroutineScope()
     var loading by remember { mutableStateOf(false) }
     ScreenScaffold {
-        Text("Raise complaint")
-        OutlinedTextField(problem, onProblem, Modifier.fillMaxWidth(), label = { Text("Describe the issue") }, minLines = 4)
-        OutlinedTextField(city, onCity, Modifier.fillMaxWidth(), label = { Text("City / area") })
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = onCamera) { Text("Camera") }
-            Button(onClick = onVoice) { Text("Voice") }
-            Button(onClick = onGps) { Text("GPS") }
+        Text("📢 Raise Civic Grievance", style = MaterialTheme.typography.titleLarge)
+        OutlinedTextField(problem, onProblem, Modifier.fillMaxWidth(), label = { Text("Describe the issue (e.g. pothole, sewage, burst pipe)") }, minLines = 4)
+        OutlinedTextField(city, onCity, Modifier.fillMaxWidth(), label = { Text("City / Area (e.g. Vijayawada, MG Road)") })
+
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            Button(onClick = onCamera, modifier = Modifier.weight(1f)) {
+                Text(if (photoBmp != null) "📷 Change Photo" else "📷 Camera")
+            }
+            Button(onClick = onVoice, modifier = Modifier.weight(1f)) { Text("🎙️ Voice") }
+            Button(onClick = onGps, modifier = Modifier.weight(1f)) { Text("📍 GPS") }
         }
+
         if (photoBmp != null) {
-            Image(photoBmp.asImageBitmap(), contentDescription = "Evidence preview", modifier = Modifier.fillMaxWidth().height(160.dp))
+            val sizeKb = photoPath?.let { File(it) }?.takeIf { it.exists() }?.length()?.div(1024) ?: 0
+            Card(
+                colors = CardDefaults.cardColors(CardBg),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("📷 Evidence Attached (${sizeKb} KB compressed)", style = MaterialTheme.typography.bodySmall, color = Color(0xFFA0AEC0))
+                        TextButton(onClick = onCamera) { Text("Retake", style = MaterialTheme.typography.labelSmall) }
+                    }
+                    Image(
+                        bitmap = photoBmp.asImageBitmap(),
+                        contentDescription = "Evidence preview",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(180.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .border(1.dp, Color(0x40667EEA), RoundedCornerShape(12.dp))
+                    )
+                }
+            }
         }
+
         Button(onClick = {
             loading = true
             scope.launch {
@@ -344,10 +538,17 @@ private fun RaiseScreen(
                 loading = false
                 onAnalyzed(merged)
             }
-        }, enabled = problem.isNotBlank() && !loading) {
-            Text(if (loading) "Analyzing…" else "Analyze (local AI + Gemini fallback)")
+        }, enabled = problem.isNotBlank() && !loading, modifier = Modifier.fillMaxWidth()) {
+            if (loading) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    CircularProgressIndicator(modifier = Modifier.width(18.dp).height(18.dp), strokeWidth = 2.dp, color = Color.White)
+                    Text(if (photoBmp != null) "Analyzing image & text with AI..." else "Analyzing with AI...")
+                }
+            } else {
+                Text(if (photoBmp != null) "Analyze Issue + Image Evidence" else "Analyze Grievance")
+            }
         }
-        Text("If the cloud is down, the on-device open model still classifies the report.")
+        Text("AI classifies department, severity, priority, and emergency status directly from text + photo.", style = MaterialTheme.typography.bodySmall, color = Color(0xFFA0AEC0))
     }
 }
 

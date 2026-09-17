@@ -14,7 +14,7 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0.0"
-        buildConfigField("String", "API_URL", "\"${project.findProperty("CIVICFLOW_API_URL") ?: "http://10.0.2.2:5000"}\"")
+        buildConfigField("String", "API_URL", "\"${project.findProperty("CIVICFLOW_API_URL") ?: "http://127.0.0.1:5000"}\"")
     }
 
     buildTypes {
