@@ -1043,12 +1043,35 @@ export default function App() {
         {adminTab === "clusters" && (
           <div className="card">
             <h2>Geographic Issue Clusters</h2>
+            <p className="muted" style={{ marginBottom: 16 }}>
+              CivicFlow AI automatically groups multiple citizen complaints reported within a 450m radius of the same department to identify systemic civic issues.
+            </p>
             {clusters.length === 0 && <p className="muted">No mapped clusters detected.</p>}
             {clusters.map((c) => (
-              <div key={c.id} className="grievance-card">
-                <p><strong>{c.title}</strong> {c.emergency && <span className="badge badge-emergency">Emergency</span>}</p>
-                <p>Reports: {c.reports} · Department: {c.department}</p>
-                <p className="muted">Coordinates: {c.lat}, {c.lng}</p>
+              <div key={c.id} className="grievance-card" style={{ marginBottom: 16 }}>
+                <div className="row space-between" style={{ alignItems: "center", marginBottom: 6 }}>
+                  <strong style={{ fontSize: "1.1rem" }}>{c.title}</strong>
+                  {c.emergency ? (
+                    <span className="badge badge-emergency">🚨 Emergency Cluster</span>
+                  ) : (
+                    <span className="badge badge-medium">📋 {c.department} Cluster</span>
+                  )}
+                </div>
+                <p><strong>Clustered Reports Count:</strong> {c.reports} grievance(s)</p>
+                <p><strong>Department:</strong> {c.department}</p>
+                <p className="muted"><strong>📍 Centroid Coordinates:</strong> {c.lat}, {c.lng}</p>
+                {c.members && c.members.length > 0 && (
+                  <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.1)" }}>
+                    <small style={{ color: "#c7cce8", fontWeight: 600 }}>Linked Complaints in this Cluster:</small>
+                    <ul style={{ margin: "6px 0 0 0", paddingLeft: 18, fontSize: "0.88rem", color: "#d1d5db" }}>
+                      {c.members.map((m) => (
+                        <li key={m.id}>
+                          <code>{`CF-${m.id.substring(0, 8).toUpperCase()}`}</code>: {m.problem} ({m.status || "Submitted"})
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             ))}
           </div>
