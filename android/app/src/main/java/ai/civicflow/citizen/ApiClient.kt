@@ -39,7 +39,31 @@ object ApiClient {
             val text = resp.body?.string() ?: ""
             val json = JSONObject(text)
             if (resp.isSuccessful && json.has("idToken")) {
-                Pair(true, json.optString("email", email))
+                val uid = json.optString("localId", "")
+                val idToken = json.optString("email", email)
+                val loggedEmail = json.optString("email", email).trim().lowercase()
+
+                // Ensure user profile document exists in Firestore users/{uid}
+                if (uid.isNotBlank()) {
+                    try {
+                        val userFields = JSONObject()
+                            .put("email", JSONObject().put("stringValue", loggedEmail))
+                            .put("role", JSONObject().put("stringValue", if (ADMIN_EMAILS.contains(loggedEmail)) "admin" else "citizen"))
+
+                        val docBody = JSONObject().put("fields", userFields).toString().toRequestBody(jsonMedia)
+                        val userReqBuilder = Request.Builder()
+                            .url("https://firestore.googleapis.com/v1/projects/$FIREBASE_PROJECT_ID/databases/(default)/documents/users/$uid")
+                            .patch(docBody)
+                        
+                        val tok = json.optString("idToken", "")
+                        if (tok.isNotBlank()) {
+                            userReqBuilder.addHeader("Authorization", "Bearer $tok")
+                        }
+                        client.newCall(userReqBuilder.build()).execute()
+                    } catch (_: Exception) {}
+                }
+
+                Pair(true, loggedEmail)
             } else {
                 val err = json.optJSONObject("error")?.optString("message") ?: "Login failed"
                 Pair(false, err)
@@ -72,23 +96,30 @@ object ApiClient {
             val json = JSONObject(text)
             if (resp.isSuccessful && json.has("idToken")) {
                 val uid = json.optString("localId", "")
-                val registeredEmail = json.optString("email", email)
+                val idToken = json.optString("idToken", "")
+                val registeredEmail = json.optString("email", email).trim().lowercase()
 
                 if (uid.isNotBlank()) {
                     try {
                         val userFields = JSONObject()
-                            .put("name", JSONObject().put("stringValue", name.trim()))
-                            .put("email", JSONObject().put("stringValue", registeredEmail.trim().lowercase()))
+                            .put("name", JSONObject().put("stringValue", name.trim().ifBlank { "Citizen User" }))
+                            .put("email", JSONObject().put("stringValue", registeredEmail))
                             .put("phone", JSONObject().put("stringValue", phone.trim()))
-                            .put("role", JSONObject().put("stringValue", "citizen"))
+                            .put("role", JSONObject().put("stringValue", if (ADMIN_EMAILS.contains(registeredEmail)) "admin" else "citizen"))
 
                         val docBody = JSONObject().put("fields", userFields).toString().toRequestBody(jsonMedia)
-                        val userReq = Request.Builder()
-                            .url("https://firestore.googleapis.com/v1/projects/$FIREBASE_PROJECT_ID/databases/(default)/documents/users?documentId=$uid")
-                            .post(docBody)
-                            .build()
-                        client.newCall(userReq).execute()
-                    } catch (_: Exception) {}
+                        val userReqBuilder = Request.Builder()
+                            .url("https://firestore.googleapis.com/v1/projects/$FIREBASE_PROJECT_ID/databases/(default)/documents/users/$uid")
+                            .patch(docBody)
+
+                        if (idToken.isNotBlank()) {
+                            userReqBuilder.addHeader("Authorization", "Bearer $idToken")
+                        }
+
+                        client.newCall(userReqBuilder.build()).execute()
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
                 }
 
                 Pair(true, registeredEmail)
@@ -143,6 +174,8 @@ object ApiClient {
             val mail = item.optString("citizenEmail", "").trim().lowercase()
             if (mail.isNotBlank()) {
                 fields.put("citizenEmail", JSONObject().put("stringValue", mail))
+                fields.put("userEmail", JSONObject().put("stringValue", mail))
+                fields.put("email", JSONObject().put("stringValue", mail))
             }
 
             if (item.has("lat") && !item.isNull("lat")) {
@@ -174,7 +207,7 @@ object ApiClient {
             val json = JSONObject(text)
             val docs = json.optJSONArray("documents") ?: return list
 
-            val mailFilter = userEmail?.trim()?.lowercase()
+            val mailFilter = userEmail?.trim()?.lowercase() ?: ""
 
             for (i in 0 until docs.length()) {
                 val docObj = docs.getJSONObject(i)
@@ -187,8 +220,10 @@ object ApiClient {
                     ?: fields.optJSONObject("userEmail")?.optString("stringValue")
                     ?: "").trim().lowercase()
 
-                if (!mailFilter.isNullOrBlank() && citizenEmail.isNotBlank() && citizenEmail != mailFilter) {
-                    continue // Skip grievances belonging to other users
+                if (mailFilter.isNotBlank()) {
+                    if (citizenEmail.isNotBlank() && citizenEmail != mailFilter) {
+                        continue // Skip grievances belonging to another user
+                    }
                 }
 
                 val item = JSONObject()
