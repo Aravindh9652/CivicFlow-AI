@@ -331,6 +331,74 @@ def insights():
     return jsonify({"insights": insights_from_items(items), "count": len(items)})
 
 
+def _answer_assistant_query(question: str, problem: str, city: str, context: dict, analysis: dict) -> str:
+    q = question.lower().strip()
+
+    # Explicit civic feature questions
+    if "department" in q or "who handles" in q or "rout" in q:
+        return (
+            f"Recommended department: {analysis['department']}. "
+            f"{analysis['routingReason']} Confidence {int(analysis['confidence']*100)}%."
+        )
+    if "priority" in q or "severity" in q or "score" in q:
+        return (
+            f"Priority {analysis['priorityScore']}/100 ({analysis['severity']}). "
+            f"{analysis['priorityReason']}"
+        )
+    if "status" in q or "track" in q:
+        status = context.get("status") or "Not submitted yet"
+        return f"Current tracked status: {status}. Authorities update this real-time from the command center."
+    if "duplicate" in q:
+        return (
+            "CivicFlow checks semantic similarity, department, and GPS proximity "
+            "before submission. You can still file a new report if it is a distinct incident."
+        )
+    if "attach" in q or "photo" in q or "camera" in q:
+        return (
+            "Attach a clear photo of the issue, keep GPS on, and add a landmark. "
+            "Do not photograph people in distress if it delays calling 112."
+        )
+    if analysis.get("emergency") or "emergency" in q:
+        return analysis["advice"]
+
+    # Call Gemini directly for any general knowledge, AI, or platform question
+    if os.getenv("GEMINI_API_KEY"):
+        try:
+            model = genai.GenerativeModel(GEMINI_MODEL)
+            prompt = (
+                "You are CivicFlow AI's helpful citizen assistant.\n"
+                "Answer the user's question clearly, accurately, and politely in 2 to 4 sentences.\n"
+                "If it's a general question (e.g. about AI, technology, civic processes, or life advice), answer it directly.\n\n"
+                f"Question: {question}\n"
+            )
+            response = model.generate_content(prompt)
+            if response and response.text:
+                ans = response.text.strip()
+                if ans:
+                    return ans
+        except Exception as err:
+            print("Assistant Gemini direct Q&A fallback notice:", err)
+
+    # Intelligent offline/fallback responses for non-civic or general queries
+    if "llm" in q or "large language model" in q or "ai" in q or "model" in q:
+        return (
+            "LLMs (Large Language Models) are deep-learning AI models trained on text to understand, summarize, and generate human language. "
+            "In CivicFlow AI, we use LLMs like Google Gemini alongside local open-source models to analyze grievances, calculate priority scores, "
+            "draft formal authority emails, and answer your queries."
+        )
+    if "civicflow" in q or "what is this" in q or "how does" in q or "help" in q:
+        return (
+            "CivicFlow AI is an AI-powered civic grievance platform. You can report community issues like potholes, water leaks, or power outages, "
+            "and AI automatically drafts official reports, assigns priority scores, routes to responsible authorities, and tracks real-time resolution status."
+        )
+
+    return (
+        f"Regarding '{question}': I am your CivicFlow AI assistant! You can ask me any question about civic issue routing, "
+        f"priority scores, tracking your complaint, or general inquiries. For this report ({analysis['department']}), "
+        f"ensure your location and description are accurate before submitting."
+    )
+
+
 @app.route("/assistant", methods=["POST"])
 def assistant():
     data = request.get_json() or {}
@@ -343,41 +411,7 @@ def assistant():
     city = context.get("city") or ""
     analysis = first_pass(problem, city)
 
-    q = question.lower()
-    if "department" in q or "who handles" in q or "rout" in q:
-        answer = (
-            f"Recommended department: {analysis['department']}. "
-            f"{analysis['routingReason']} Confidence {int(analysis['confidence']*100)}%."
-        )
-    elif "priority" in q:
-        answer = (
-            f"Priority {analysis['priorityScore']}/100 ({analysis['severity']}). "
-            f"{analysis['priorityReason']}"
-        )
-    elif "status" in q:
-        status = context.get("status") or "Not submitted yet"
-        answer = f"Current tracked status: {status}. Authorities update this from the command center."
-    elif "duplicate" in q:
-        answer = (
-            "CivicFlow checks semantic similarity, department, and GPS proximity "
-            "before submit. You can still file a new report if it is a distinct incident."
-        )
-    elif "attach" in q or "photo" in q or "camera" in q:
-        answer = (
-            "Attach a clear photo of the issue, keep GPS on, and add a landmark. "
-            "Do not photograph people in distress if it delays calling 112."
-        )
-    elif analysis.get("emergency") or "emergency" in q:
-        answer = analysis["advice"]
-    else:
-        cloud = _run_gemini(
-            f"Citizen question: {question}\nComplaint context: {problem}",
-            city,
-        )
-        if cloud and cloud.get("advice"):
-            answer = cloud["advice"]
-        else:
-            answer = analysis["advice"]
+    answer = _answer_assistant_query(question, problem, city, context, analysis)
 
     return jsonify({
         "answer": answer,

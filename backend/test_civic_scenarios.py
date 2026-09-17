@@ -82,6 +82,12 @@ class ScenarioTests(unittest.TestCase):
         self.assertTrue(matches)
         self.assertGreater(matches[0]["similarity"], 0.42)
 
+    def test_assistant_llm_query(self):
+        from app import _answer_assistant_query
+        ans = _answer_assistant_query("What are LLM's", "General issue", "", {}, {"department": "General", "routingReason": "General", "confidence": 0.5, "priorityScore": 50, "severity": "Medium", "priorityReason": "Medium", "advice": "General advice"})
+        self.assertIn("Language Model", ans)
+        self.assertNotIn("This appears to be a General civic grievance", ans)
+
 
 if __name__ == "__main__":
     unittest.main()

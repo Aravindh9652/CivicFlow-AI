@@ -4,6 +4,7 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
+  sendPasswordResetEmail,
 } from "firebase/auth";
 import { useState, useEffect, useMemo, useRef, Suspense } from "react";
 import "./App.css";
@@ -259,6 +260,25 @@ export default function App() {
         setAuthError("Invalid email or password. Please check your credentials.");
       } else {
         setAuthError(err.message || "Authentication error occurred.");
+      }
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email || !email.trim().includes("@")) {
+      setAuthError("Please enter your registered email address first.");
+      return;
+    }
+    try {
+      await sendPasswordResetEmail(auth, email.trim());
+      setAuthError("✅ Password reset link sent! Check your email inbox.");
+    } catch (err) {
+      if (err.code === "auth/user-not-found") {
+        setAuthError("No account found with this email address.");
+      } else if (err.code === "auth/invalid-email") {
+        setAuthError("Please enter a valid email address.");
+      } else {
+        setAuthError(err.message || "Failed to send password reset email.");
       }
     }
   };
@@ -737,7 +757,17 @@ export default function App() {
                   {showLoginPassword ? "🙈" : "👁️"}
                 </button>
               </div>
-              <br /><br />
+              <div style={{ textAlign: "right", marginTop: "10px", marginBottom: "16px" }}>
+                <span
+                  className="auth-link"
+                  role="button"
+                  tabIndex={0}
+                  onClick={handleForgotPassword}
+                  style={{ fontSize: "0.9rem" }}
+                >
+                  Forgot Password?
+                </span>
+              </div>
               <button className="btn primary" onClick={login} style={{ width: "100%" }}>
                 <span>🚀 Login</span>
               </button>
@@ -801,7 +831,7 @@ export default function App() {
                 <input
                   className="input"
                   type={showRegisterPassword ? "text" : "password"}
-                  placeholder="Password (min 6 chars) *"
+                  placeholder="Password *"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
@@ -827,7 +857,7 @@ export default function App() {
           )}
 
           {authError && (
-            <p className={`auth-error ${authError.includes("successfully") ? "success" : "error"}`}>
+            <p className={`auth-error ${authError.includes("✅") || authError.includes("successfully") || authError.includes("sent") ? "success" : "error"}`}>
               {authError}
             </p>
           )}
