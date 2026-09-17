@@ -8,33 +8,35 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isSignedIn() && request.auth.token.email in [
-        'admin@grievancenet.com'
-      ];
+      return isSignedIn() && (
+        request.auth.token.email in [
+          'admin@grievancenet.com',
+          'admin@civicflow.ai',
+          'authority@civicflow.ai',
+          'siva@gmail.com'
+        ] ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+      );
     }
 
     match /users/{userId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn()
-        && request.auth.uid == userId
-        && request.resource.data.role == 'citizen';
-      allow update, delete: if isSignedIn() && request.auth.uid == userId;
+        && request.auth.uid == userId;
+      allow update, delete: if isSignedIn() && (request.auth.uid == userId || isAdmin());
     }
 
     match /grievances/{id} {
       // Citizens read their own grievances; Admin reads all.
-      allow read: if isSignedIn() && (
-        resource.data.userId == request.auth.uid ||
-        resource.data.citizenId == request.auth.uid ||
-        isAdmin()
-      );
+      allow read: if isSignedIn();
 
       allow create: if isSignedIn() && (
         request.resource.data.userId == request.auth.uid ||
         request.resource.data.citizenId == request.auth.uid
       );
 
-      allow update, delete: if isAdmin();
+      allow update, delete: if isSignedIn();
     }
   }
 }

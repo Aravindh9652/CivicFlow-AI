@@ -302,13 +302,24 @@ export default function App() {
   };
 
   const updateStatus = async (id, newStatus) => {
+    if (!id) return;
+    // Optimistic state update for instant UI feedback across all views
+    setAllGrievances((prev) =>
+      prev.map((g) => (g.id === id ? { ...g, status: newStatus } : g))
+    );
+    setGrievances((prev) =>
+      prev.map((g) => (g.id === id ? { ...g, status: newStatus } : g))
+    );
+
     try {
       await updateDoc(doc(db, "grievances", id), {
         status: newStatus,
         updatedAt: serverTimestamp(),
       });
     } catch (err) {
-      alert("Failed to update status");
+      console.error("Grievance status update error:", err);
+      // If error occurs, inform user with specific message
+      alert(`Status update notice: ${err.message || "Failed to sync to database"}`);
     }
   };
 
