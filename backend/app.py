@@ -41,8 +41,9 @@ SENDER_PASSWORD = os.getenv("SENDER_PASSWORD")
 # ---------------- EMAIL HELPER ----------------
 def send_email(to_email, subject, body, attachments=None):
     msg = EmailMessage()
-    msg["From"] = SENDER_EMAIL
+    msg["From"] = f"CivicFlow AI Support <{SENDER_EMAIL}>" if SENDER_EMAIL else "CivicFlow AI Support"
     msg["To"] = to_email
+    msg["Reply-To"] = SENDER_EMAIL
     msg["Subject"] = subject
     msg.set_content(body)
 
