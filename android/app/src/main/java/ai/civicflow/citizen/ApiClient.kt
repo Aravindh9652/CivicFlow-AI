@@ -60,6 +60,23 @@ object ApiClient {
         }
     }
 
+    fun requestPasswordReset(email: String): Pair<Boolean, String> {
+        return try {
+            val payload = JSONObject().put("email", email).toString().toRequestBody(jsonMedia)
+            val req = Request.Builder().url("${BuildConfig.API_URL}/request-password-reset").post(payload).build()
+            val resp = client.newCall(req).execute()
+            val text = resp.body?.string() ?: ""
+            val json = JSONObject(text)
+            if (resp.isSuccessful) {
+                Pair(true, json.optString("message", "Password reset email sent successfully!"))
+            } else {
+                Pair(false, json.optString("error", "Failed to send reset email."))
+            }
+        } catch (e: Exception) {
+            Pair(false, e.localizedMessage ?: "Network error")
+        }
+    }
+
     fun saveToFirestore(item: JSONObject): String? {
         return try {
             val fields = JSONObject()

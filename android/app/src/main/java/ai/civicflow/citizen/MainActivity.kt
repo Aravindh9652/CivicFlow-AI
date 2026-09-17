@@ -192,9 +192,25 @@ fun CivicNav() {
                         }
                     }
 
-                    Row(horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
+                    Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                         TextButton(onClick = { isRegister = !isRegister; authMsg = "" }) {
-                            Text(if (isRegister) "Already have an account? Sign In" else "New citizen? Create Account")
+                            Text(if (isRegister) "Already have account? Sign In" else "New citizen? Create Account")
+                        }
+                        if (!isRegister) {
+                            TextButton(onClick = {
+                                if (emailInput.isBlank() || !emailInput.contains("@")) {
+                                    authMsg = "Enter your registered email address first."
+                                    return@TextButton
+                                }
+                                authLoading = true
+                                scope.launch {
+                                    val (ok, msg) = withContext(Dispatchers.IO) { ApiClient.requestPasswordReset(emailInput.trim()) }
+                                    authLoading = false
+                                    authMsg = if (ok) "✅ $msg" else "❌ $msg"
+                                }
+                            }) {
+                                Text("Forgot Password?", color = Color(0xFF60A5FA))
+                            }
                         }
                     }
                 }
