@@ -1632,9 +1632,19 @@ function AdminDashboard({ grievances, updateStatus }) {
       <h2>🛠 Admin Grievance Panel</h2>
       {grievances.map((g) => (
         <div key={g.id} className="grievance-card">
-          <p><b>ID:</b> <code>{`CF-${g.id.substring(0, 8).toUpperCase()}`}</code></p>
+          <div className="row space-between" style={{ alignItems: "center", marginBottom: "8px" }}>
+            <span className="code-pill">{`CF-${g.id.substring(0, 8).toUpperCase()}`}</span>
+            <span className={badgeClass(g.severity, g.emergency)}>
+              📋 Department: {g.department || "General"}
+            </span>
+          </div>
           <p><b>Issue:</b> {g.problem}</p>
-          <p><b>City:</b> {g.city}</p>
+          <p>
+            <b>📋 Classified Department:</b>{" "}
+            <strong style={{ color: "#f093fb" }}>{g.department || "General"}</strong>{" "}
+            {g.category ? `(${g.category})` : ""}
+          </p>
+          <p><b>City:</b> {g.city || "Captured via GPS"}</p>
           <p className="muted">
             <b>Submitted:</b>{" "}
             {g.createdAt?.toDate ? g.createdAt.toDate().toLocaleString() : "Just now"}
