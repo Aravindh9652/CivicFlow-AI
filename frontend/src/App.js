@@ -99,7 +99,7 @@ export default function App() {
   const [duplicates, setDuplicates] = useState([]);
   const [assistantQ, setAssistantQ] = useState("");
   const [assistantA, setAssistantA] = useState("");
-  const [adminTab, setAdminTab] = useState("queue");
+  const [adminTab, setAdminTab] = useState("inbox");
   const [mapFilter, setMapFilter] = useState("All");
   const [handoffText, setHandoffText] = useState("");
   const [slaMinutes, setSlaMinutes] = useState(SLA_DEFAULT);
@@ -975,7 +975,7 @@ export default function App() {
         </header>
 
         <div className="tabs" role="tablist">
-          {["queue", "map", "clusters", "sla", "insights", "office", "inbox"].map((t) => (
+          {["inbox", "queue", "map", "clusters", "sla", "insights", "office"].map((t) => (
             <button key={t} className={`tab ${adminTab === t ? "active" : ""}`} onClick={() => setAdminTab(t)}>
               {t.toUpperCase()}
             </button>
