@@ -95,6 +95,11 @@ object ApiClient {
                 .put("detailedLocation", JSONObject().put("stringValue", item.optString("landmark", "")))
                 .put("createdAtMillis", JSONObject().put("integerValue", System.currentTimeMillis()))
 
+            val mail = item.optString("citizenEmail", "").trim().lowercase()
+            if (mail.isNotBlank()) {
+                fields.put("citizenEmail", JSONObject().put("stringValue", mail))
+            }
+
             if (item.has("lat") && !item.isNull("lat")) {
                 fields.put("latitude", JSONObject().put("doubleValue", item.optDouble("lat")))
             }
@@ -115,7 +120,7 @@ object ApiClient {
         }
     }
 
-    fun fetchFromFirestore(): List<JSONObject> {
+    fun fetchFromFirestore(userEmail: String? = null): List<JSONObject> {
         val list = mutableListOf<JSONObject>()
         try {
             val req = Request.Builder().url(FIRESTORE_URL).get().build()
@@ -124,11 +129,22 @@ object ApiClient {
             val json = JSONObject(text)
             val docs = json.optJSONArray("documents") ?: return list
 
+            val mailFilter = userEmail?.trim()?.lowercase()
+
             for (i in 0 until docs.length()) {
                 val docObj = docs.getJSONObject(i)
                 val docName = docObj.optString("name", "")
                 val id = docName.substringAfterLast("/")
                 val fields = docObj.optJSONObject("fields") ?: continue
+
+                val citizenEmail = (fields.optJSONObject("citizenEmail")?.optString("stringValue")
+                    ?: fields.optJSONObject("email")?.optString("stringValue")
+                    ?: fields.optJSONObject("userEmail")?.optString("stringValue")
+                    ?: "").trim().lowercase()
+
+                if (!mailFilter.isNullOrBlank() && citizenEmail.isNotBlank() && citizenEmail != mailFilter) {
+                    continue // Skip grievances belonging to other users
+                }
 
                 val item = JSONObject()
                     .put("id", id)
@@ -143,6 +159,7 @@ object ApiClient {
                     .put("emergency", fields.optJSONObject("emergency")?.optBoolean("booleanValue", false) ?: false)
                     .put("emergencyReason", fields.optJSONObject("emergencyReason")?.optString("stringValue", "") ?: "")
                     .put("landmark", fields.optJSONObject("detailedLocation")?.optString("stringValue", "") ?: "")
+                    .put("citizenEmail", citizenEmail)
 
                 val latVal = fields.optJSONObject("latitude")?.optDouble("doubleValue")
                 val lngVal = fields.optJSONObject("longitude")?.optDouble("doubleValue")

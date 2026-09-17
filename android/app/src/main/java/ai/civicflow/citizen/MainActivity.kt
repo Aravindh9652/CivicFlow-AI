@@ -45,6 +45,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -591,6 +592,7 @@ fun CivicNav() {
                                 .put("landmark", landmark)
                                 .put("lat", lat)
                                 .put("lng", lng)
+                                .put("citizenEmail", currentUserEmail ?: "")
 
                             val docId = withContext(Dispatchers.IO) { ApiClient.saveToFirestore(payload) } ?: localId
                             complaints.add(0, SavedComplaint(docId, problem, a, lat, lng, "Submitted", photoPath))
@@ -614,7 +616,7 @@ fun CivicNav() {
                 fun refreshGrievances() {
                     isRefreshing = true
                     scope.launch {
-                        val remoteList = withContext(Dispatchers.IO) { ApiClient.fetchFromFirestore() }
+                        val remoteList = withContext(Dispatchers.IO) { ApiClient.fetchFromFirestore(currentUserEmail) }
                         isRefreshing = false
                         if (remoteList.isNotEmpty()) {
                             complaints.clear()
@@ -650,6 +652,10 @@ fun CivicNav() {
                             }
                         }
                     }
+                }
+
+                LaunchedEffect(currentUserEmail) {
+                    refreshGrievances()
                 }
 
                 ScreenScaffold {
