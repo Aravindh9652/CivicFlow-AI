@@ -17,6 +17,7 @@ import {
   doc,
   setDoc,
   updateDoc,
+  deleteDoc,
   orderBy,
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -683,6 +684,35 @@ export default function App() {
     }
   };
 
+  const deleteDemo = async () => {
+    const demoItems = allGrievances.filter((g) => g.isDemo);
+    if (demoItems.length === 0) {
+      alert("No demo sample grievances found. Only original citizen complaints remain.");
+      return;
+    }
+
+    if (!window.confirm(`Delete ${demoItems.length} demo sample grievance(s) and keep original complaints only?`)) {
+      return;
+    }
+
+    setLoading(true);
+    for (const g of demoItems) {
+      if (g.id) {
+        try {
+          await deleteDoc(doc(db, "grievances", g.id));
+        } catch (err) {
+          console.warn("Cloud delete demo doc notice:", err);
+        }
+      }
+    }
+
+    setAllGrievances((prev) => prev.filter((g) => !g.isDemo));
+    setGrievances((prev) => prev.filter((g) => !g.isDemo));
+    setLoading(false);
+
+    alert(`✅ Removed ${demoItems.length} demo sample grievance(s). Showing original citizen complaints only!`);
+  };
+
   const askAssistant = async () => {
     if (!assistantQ.trim()) return;
     try {
@@ -964,8 +994,24 @@ export default function App() {
               <div className="card small">
                 <h4>Live Incident Counts</h4>
                 <p>Total: {allGrievances.length} · Critical: {critical.length} · High: {high.length} · Normal: {normal.length}</p>
-                <button className="btn secondary" onClick={seedDemo}>Load demo sample data</button>
-                <p className="muted">Demo rows are tagged isDemo and marked distinctly in orange.</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "12px" }}>
+                  <button className="btn secondary" onClick={seedDemo}>
+                    📥 Load demo sample data
+                  </button>
+                  <p className="muted" style={{ margin: 0 }}>
+                    Demo rows are tagged isDemo and marked distinctly in orange.
+                  </p>
+                  <button
+                    className="btn secondary"
+                    style={{ background: "rgba(239, 68, 68, 0.15)", borderColor: "rgba(239, 68, 68, 0.3)", color: "#fca5a5" }}
+                    onClick={deleteDemo}
+                  >
+                    🗑️ Delete demo sample data
+                  </button>
+                  <p className="muted" style={{ margin: 0 }}>
+                    Keep original complaints only (removes all demo sample rows).
+                  </p>
+                </div>
               </div>
             </aside>
           </div>
