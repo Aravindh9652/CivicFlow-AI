@@ -143,9 +143,14 @@ export default function App() {
               (mail && g.citizenEmail?.toLowerCase() === mail)
           );
         list.sort((a, b) => {
-          const ta = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0;
-          const tb = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0;
-          return tb - ta;
+          const getMs = (item) => {
+            if (item.createdAt?.toDate) return item.createdAt.toDate().getTime();
+            if (typeof item.createdAt?.toMillis === "function") return item.createdAt.toMillis();
+            if (typeof item.createdAt === "number") return item.createdAt;
+            if (item.createdAtMillis) return item.createdAtMillis;
+            return Date.now();
+          };
+          return getMs(b) - getMs(a);
         });
         setGrievances(list);
       },
@@ -522,7 +527,8 @@ export default function App() {
     }
 
     const slaMins = slaMinutes[aiData?.severity] || SLA_DEFAULT.Medium;
-    await addDoc(collection(db, "grievances"), {
+    const nowMs = Date.now();
+    const docData = {
       userId: user.uid,
       citizenId: user.uid,
       citizenEmail: user.email || "",
@@ -556,20 +562,30 @@ export default function App() {
 
       status: "Submitted",
       slaMinutes: slaMins,
-      slaDeadlineMs: Date.now() + slaMins * 60 * 1000,
+      slaDeadlineMs: nowMs + slaMins * 60 * 1000,
       slaStatus: "on_track",
 
       createdAt: serverTimestamp(),
+      createdAtMillis: nowMs,
       updatedAt: serverTimestamp(),
       aiUsed: aiData?.aiUsed ?? false,
       aiLayer: aiData?.aiLayer || "local-open-source",
       mailBody,
       emailSent,
       isDemo: false,
-    });
+    };
+
+    const docRef = await addDoc(collection(db, "grievances"), docData);
+    const createdItem = { id: docRef.id, ...docData };
+
+    // Optimistically update local citizen state so it displays immediately
+    setGrievances((prev) => [createdItem, ...prev.filter((g) => g.id !== docRef.id)]);
+
+    return createdItem;
   };
 
   const sendEmail = async () => {
+    setLoading(true);
     const payload = {
       problem,
       summary: aiData?.summary,
@@ -596,6 +612,14 @@ export default function App() {
       const emailSent = res.ok;
       await persistGrievance({ emailSent });
 
+      // Reset form fields after successful submission
+      setProblem("");
+      setImage(null);
+      setImagePreview("");
+      setAiData(null);
+      setMailBody("");
+
+      setLoading(false);
       if (emailSent) {
         alert("✅ Grievance submitted and notification email sent successfully!");
       } else {
@@ -608,9 +632,18 @@ export default function App() {
       console.error(err);
       try {
         await persistGrievance({ emailSent: false });
+
+        setProblem("");
+        setImage(null);
+        setImagePreview("");
+        setAiData(null);
+        setMailBody("");
+
+        setLoading(false);
         alert("Grievance saved successfully to CivicFlow AI!");
         setPage(3);
       } catch {
+        setLoading(false);
         alert("❌ Error submitting grievance");
       }
     }
