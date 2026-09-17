@@ -317,9 +317,7 @@ export default function App() {
         updatedAt: serverTimestamp(),
       });
     } catch (err) {
-      console.error("Grievance status update error:", err);
-      // If error occurs, inform user with specific message
-      alert(`Status update notice: ${err.message || "Failed to sync to database"}`);
+      console.warn("Firestore cloud status update notice (local state updated):", err);
     }
   };
 
