@@ -956,11 +956,18 @@ export default function App() {
     const high = allGrievances.filter((g) => !critical.includes(g) && (g.severity === "High" || (g.priorityScore || 0) >= 70));
     const normal = allGrievances.filter((g) => !critical.includes(g) && !high.includes(g));
     const filtered = allGrievances.filter((g) => {
+      const dep = (g.department || "General").toLowerCase();
+      const sev = (g.severity || "Medium").toLowerCase();
+      const st = (g.status || "Submitted").toLowerCase();
+
       if (mapFilter === "All") return true;
-      if (mapFilter === "Critical") return g.emergency || g.severity === "Critical";
-      if (mapFilter === "Resolved") return g.status === "Resolved";
-      if (mapFilter === "Pending") return g.status === "Submitted" || g.status === "Pending";
-      return g.department === mapFilter || g.severity === mapFilter;
+      if (mapFilter === "Critical") return g.emergency || sev === "critical" || (g.priorityScore || 0) >= 90;
+      if (mapFilter === "High") return !g.emergency && sev !== "critical" && (sev === "high" || ((g.priorityScore || 0) >= 70 && (g.priorityScore || 0) < 90));
+      if (mapFilter === "Normal") return !g.emergency && sev !== "critical" && sev !== "high" && (g.priorityScore || 0) < 70;
+      if (mapFilter === "Resolved") return st === "resolved";
+      if (mapFilter === "Pending") return st === "submitted" || st === "pending" || st === "under review" || st === "assigned" || st === "in progress";
+
+      return dep === mapFilter.toLowerCase();
     });
 
     return (
@@ -1021,7 +1028,7 @@ export default function App() {
           <div className="card">
             <h2>Hotspot Map</h2>
             <div className="tabs">
-              {["All", "Critical", "High", "Municipal", "Water", "Electricity", "Police", "Health", "Resolved", "Pending"].map((f) => (
+              {["All", "Critical", "High", "Normal", "Municipal", "Water", "Electricity", "Police", "Health", "General", "Resolved", "Pending"].map((f) => (
                 <button key={f} className={`tab ${mapFilter === f ? "active" : ""}`} onClick={() => setMapFilter(f)}>{f}</button>
               ))}
             </div>
@@ -1528,14 +1535,33 @@ function HotspotMap({ filtered, clusters }) {
     import("./MapView").then(setMapMod);
   }, []);
   if (!MapMod) return null;
-  const { default: MapViewInner, Marker, Circle } = MapMod;
+  const { default: MapViewInner, Marker, Circle, Popup } = MapMod;
+
+  const validItems = filtered.filter((g) => g.latitude != null && g.longitude != null);
+  const centerLat = validItems.length > 0 ? Number(validItems[0].latitude) : 16.5062;
+  const centerLng = validItems.length > 0 ? Number(validItems[0].longitude) : 80.6480;
+
   return (
-    <MapViewInner center={[17.385, 78.486]} zoom={12}>
-      {filtered.map((g) =>
-        g.latitude != null && g.longitude != null ? (
-          <Marker key={g.id} position={[g.latitude, g.longitude]} />
-        ) : null
-      )}
+    <MapViewInner center={[centerLat, centerLng]} zoom={12}>
+      {validItems.map((g) => (
+        <Marker key={g.id} position={[Number(g.latitude), Number(g.longitude)]}>
+          {Popup && (
+            <Popup>
+              <div style={{ color: "#0a0e27", fontFamily: "sans-serif", padding: "4px" }}>
+                <strong style={{ fontSize: "14px", color: "#1e1b4b" }}>
+                  {g.department || "General"} · {g.severity || "Medium"}
+                </strong>
+                <p style={{ margin: "6px 0", fontSize: "13px", color: "#334155" }}>
+                  {g.problem}
+                </p>
+                <div style={{ fontSize: "12px", color: "#64748b" }}>
+                  Status: <strong>{g.status || "Submitted"}</strong> | {g.city || g.detailedLocation || "Captured via GPS"}
+                </div>
+              </div>
+            </Popup>
+          )}
+        </Marker>
+      ))}
       {clusters.map((c) => (
         <Circle
           key={c.id}

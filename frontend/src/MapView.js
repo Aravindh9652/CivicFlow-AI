@@ -1,4 +1,4 @@
-import { MapContainer, TileLayer, Marker, Circle, useMapEvents } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Circle, Popup, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -18,7 +18,7 @@ export function LocationPicker({ setCoords }) {
   return null;
 }
 
-export { Marker, Circle };
+export { Marker, Circle, Popup };
 
 export default function MapView({ center, zoom = 13, children }) {
   return (
