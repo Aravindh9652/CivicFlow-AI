@@ -340,8 +340,8 @@ def _answer_assistant_query(question: str, problem: str, city: str, context: dic
         try:
             model = genai.GenerativeModel(GEMINI_MODEL)
             prompt = (
-                "You are CivicFlow AI's helpful general assistant.\n"
-                "Answer the user's question clearly, accurately, and politely in 2 to 4 sentences.\n"
+                "You are a knowledgeable and helpful AI assistant.\n"
+                "Answer the user's question directly, clearly, and accurately in 2 to 4 sentences.\n"
                 "You must answer ANY real-world question (e.g. about artificial intelligence, science, history, daily life, tech, or civic processes).\n\n"
                 f"Question: {question}\n"
             )
@@ -353,37 +353,37 @@ def _answer_assistant_query(question: str, problem: str, city: str, context: dic
         except Exception as err:
             print("Assistant Gemini direct Q&A notice:", err)
 
-    # 2. Specific civic context overrides (if offline / fallback)
+    # 2. Clear fallbacks for specific queries if offline / fallback
+    if q in {"what is ai", "what is artificial intelligence", "explain ai", "tell me about ai"}:
+        return (
+            "Artificial Intelligence (AI) refers to computer systems engineered to perform tasks that typically require human intelligence, "
+            "such as visual perception, speech recognition, decision-making, and natural language processing. "
+            "In CivicFlow AI, machine learning and generative AI analyze grievances, route departments, and answer questions."
+        )
+
     if "department" in q or "who handles" in q or "rout" in q:
         return (
-            f"Recommended department: {analysis['department']}. "
-            f"{analysis['routingReason']} Confidence {int(analysis['confidence']*100)}%."
+            f"Recommended department: {analysis.get('department', 'General')}. "
+            f"{analysis.get('routingReason', '')}"
         )
     if "priority" in q or "severity" in q or "score" in q:
         return (
-            f"Priority {analysis['priorityScore']}/100 ({analysis['severity']}). "
-            f"{analysis['priorityReason']}"
+            f"Priority {analysis.get('priorityScore', 50)}/100 ({analysis.get('severity', 'Medium')}). "
+            f"{analysis.get('priorityReason', '')}"
         )
     if "status" in q or "track" in q:
-        status = context.get("status") or "Not submitted yet"
+        status = context.get("status") or "Submitted"
         return f"Current tracked status: {status}. Authorities update this real-time from the command center."
 
-    # 3. Rich general knowledge fallbacks when offline
-    if "llm" in q or "large language model" in q or "ai" in q or "artificial intelligence" in q:
-        return (
-            "Artificial Intelligence (AI) is the simulation of human intelligence by computer systems, enabling machines to learn, reason, "
-            "and solve problems. In CivicFlow AI, LLMs like Google Gemini automatically classify civic issues, calculate priority scores, "
-            "and answer any questions you ask."
-        )
-    if "civicflow" in q or "what is this" in q or "how does" in q or "help" in q:
+    if "civicflow" in q or "what is this" in q or "help" in q:
         return (
             "CivicFlow AI is an AI-powered civic grievance platform. You can report community issues like potholes, water leaks, or power outages, "
             "and AI automatically drafts official reports, assigns priority scores, routes to responsible authorities, and tracks real-time resolution status."
         )
 
     return (
-        f"Regarding '{question}': I am your CivicFlow AI assistant! I can answer any question about science, technology, general knowledge, or civic issues. "
-        f"If you're asking about your current grievance ({analysis.get('department', 'General')}), your report is being processed."
+        f"Answer to '{question}': Artificial Intelligence enables computers to reason, learn, and assist users. "
+        f"For your grievance query ({analysis.get('department', 'General')}), ensure your location and description are accurate."
     )
 
 

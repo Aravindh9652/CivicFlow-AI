@@ -38,11 +38,14 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -95,7 +98,7 @@ data class SavedComplaint(
     val analysis: CivicAnalysis,
     val lat: Double?,
     val lng: Double?,
-    val status: String = "Pending",
+    var status: String = "Pending",
     val photoPath: String? = null
 )
 
@@ -141,7 +144,7 @@ fun CivicNav() {
         }
     }
 
-    val startDest = if (!currentUserEmail.isNullOrBlank()) "home" else "splash"
+    val startDest = if (!currentUserEmail.isNullOrBlank()) (if (isAdminUser) "admin_home" else "home") else "splash"
 
     val bg = Brush.verticalGradient(listOf(Navy, Color(0xFF151932), Color(0xFF1A1030)))
     Column(Modifier.fillMaxSize().background(bg)) {
@@ -151,7 +154,7 @@ fun CivicNav() {
                 Text("Phone-first multimodal AI grievance intake platform for smart cities.", style = MaterialTheme.typography.bodyLarge, color = Color(0xFFA0AEC0))
                 Spacer(Modifier.height(20.dp))
                 Button(
-                    onClick = { nav.navigate(if (!currentUserEmail.isNullOrBlank()) "home" else "login") },
+                    onClick = { nav.navigate(if (!currentUserEmail.isNullOrBlank()) (if (isAdminUser) "admin_home" else "home") else "login") },
                     modifier = Modifier.fillMaxWidth().height(50.dp)
                 ) {
                     Text("Get Started")
@@ -161,6 +164,7 @@ fun CivicNav() {
             composable("login") {
                 var emailInput by remember { mutableStateOf("") }
                 var passInput by remember { mutableStateOf("") }
+                var showPassword by remember { mutableStateOf(false) }
                 var nameInput by remember { mutableStateOf("") }
                 var phoneInput by remember { mutableStateOf("") }
                 var authMode by remember { mutableStateOf("citizen") } // "citizen" | "admin" | "register"
@@ -223,7 +227,13 @@ fun CivicNav() {
                         value = passInput,
                         onValueChange = { passInput = it },
                         modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Password (min 6 characters) *") }
+                        label = { Text("Password (min 6 characters) *") },
+                        visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            IconButton(onClick = { showPassword = !showPassword }) {
+                                Text(if (showPassword) "👁️" else "🙈", style = MaterialTheme.typography.titleMedium)
+                            }
+                        }
                     )
 
                     if (authMsg.isNotBlank()) {
@@ -268,7 +278,7 @@ fun CivicNav() {
                                     isAdminUser = (authMode == "admin") || ApiClient.ADMIN_EMAILS.contains(result.lowercase())
                                     prefs.edit().putString("user_email", result).putBoolean("is_admin", isAdminUser).apply()
                                     Toast.makeText(ctx, if (isAdminUser) "Logged in as Authority Admin: $result" else "Logged in as $result", Toast.LENGTH_SHORT).show()
-                                    nav.navigate("home")
+                                    nav.navigate(if (isAdminUser) "admin_home" else "home")
                                 } else {
                                     authMsg = "Authentication failed: $result"
                                 }
@@ -364,6 +374,164 @@ fun CivicNav() {
                     Text("🚪 Logout / Sign Out", color = Color(0xFFFCA5A5))
                 }
             } }
+
+            composable("admin_home") {
+                var isRefreshing by remember { mutableStateOf(false) }
+
+                fun refreshAdminGrievances() {
+                    isRefreshing = true
+                    scope.launch {
+                        val remoteList = withContext(Dispatchers.IO) { ApiClient.fetchFromFirestore(null) }
+                        isRefreshing = false
+                        if (remoteList.isNotEmpty()) {
+                            complaints.clear()
+                            remoteList.forEach { json ->
+                                val id = json.optString("id", UUID.randomUUID().toString())
+                                val prb = json.optString("problem", "Civic grievance")
+                                val dept = json.optString("department", "General")
+                                val cat = json.optString("category", "General")
+                                val sum = json.optString("summary", prb)
+                                val em = json.optBoolean("emergency", false)
+                                val emReason = json.optString("emergencyReason", "")
+                                val sev = json.optString("severity", "Medium")
+                                val pScore = json.optInt("priorityScore", 50)
+                                val st = json.optString("status", "Submitted")
+
+                                val a = CivicAnalysis(
+                                    department = dept,
+                                    category = cat,
+                                    summary = sum,
+                                    emergency = em,
+                                    emergencyReason = emReason,
+                                    severity = sev,
+                                    priorityScore = pScore,
+                                    priorityReason = "Calculated by CivicFlow AI",
+                                    routingReason = "Routed to $dept",
+                                    confidence = 0.95,
+                                    advice = "Admin resolution control panel.",
+                                    draftedMail = "Subject: Admin Notice — $prb"
+                                )
+                                complaints.add(SavedComplaint(id, prb, a, null, null, st))
+                            }
+                        }
+                    }
+                }
+
+                LaunchedEffect(Unit) {
+                    refreshAdminGrievances()
+                }
+
+                ScreenScaffold {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text("🛡️ Command Center", style = MaterialTheme.typography.titleLarge, color = Color(0xFFFBBF24))
+                        TextButton(onClick = { logoutUser() }) {
+                            Text("🚪 Sign Out", color = Color(0xFFFCA5A5))
+                        }
+                    }
+
+                    currentUserEmail?.let {
+                        Text("Authority Admin: $it", style = MaterialTheme.typography.bodySmall, color = Color(0xFFFBBF24))
+                    }
+
+                    Card(colors = CardDefaults.cardColors(CardBg), shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("📊 Command Center Overview", style = MaterialTheme.typography.titleMedium, color = Color.White)
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Column {
+                                    Text("Total Reports", style = MaterialTheme.typography.labelSmall, color = Color(0xFFA0AEC0))
+                                    Text("${complaints.size}", style = MaterialTheme.typography.titleMedium, color = Color.White)
+                                }
+                                Column {
+                                    Text("Critical/Emergency", style = MaterialTheme.typography.labelSmall, color = Color(0xFFFCA5A5))
+                                    Text("${complaints.count { it.analysis.emergency || it.analysis.severity.equals("critical", true) }}", style = MaterialTheme.typography.titleMedium, color = Color(0xFFEF4444))
+                                }
+                                Column {
+                                    Text("Resolved", style = MaterialTheme.typography.labelSmall, color = Color(0xFF34D399))
+                                    Text("${complaints.count { it.status.equals("resolved", true) }}", style = MaterialTheme.typography.titleMedium, color = Color(0xFF34D399))
+                                }
+                            }
+                        }
+                    }
+
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text("📋 All Citizen Reports (${complaints.size})", style = MaterialTheme.typography.titleMedium)
+                        Button(onClick = { refreshAdminGrievances() }) {
+                            Text("🔄 Sync All")
+                        }
+                    }
+
+                    if (isRefreshing) {
+                        CircularProgressIndicator(modifier = Modifier.width(20.dp).height(20.dp), strokeWidth = 2.dp)
+                    }
+
+                    complaints.forEach { c ->
+                        Card(
+                            Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                            colors = CardDefaults.cardColors(CardBg),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                    Text("CF-${c.id.take(8).uppercase()}", style = MaterialTheme.typography.labelSmall, color = Color(0xFFA0AEC0))
+                                    Text(
+                                        c.status.uppercase(),
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = when (c.status.lowercase()) {
+                                            "resolved" -> Color(0xFF34D399)
+                                            "in progress", "assigned", "under review" -> Color(0xFFFBBF24)
+                                            "rejected" -> Color(0xFFFCA5A5)
+                                            else -> Color(0xFF60A5FA)
+                                        }
+                                    )
+                                }
+                                Text(c.problem, style = MaterialTheme.typography.bodyLarge, maxLines = 2)
+                                Text("Department: ${c.analysis.department} · Priority ${c.analysis.priorityScore}/100", style = MaterialTheme.typography.bodySmall, color = Color(0xFFA0AEC0))
+
+                                if (c.analysis.emergency) {
+                                    Text("🚨 EMERGENCY HAZARD DETECTED", color = Color(0xFFFCA5A5), style = MaterialTheme.typography.labelSmall)
+                                }
+
+                                Text("Update Status:", style = MaterialTheme.typography.labelSmall, color = Color(0xFFA0AEC0))
+                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.fillMaxWidth()) {
+                                    listOf("Under Review", "In Progress", "Resolved", "Rejected").forEach { st ->
+                                        val active = c.status.equals(st, true)
+                                        Button(
+                                            onClick = {
+                                                scope.launch {
+                                                    val ok = withContext(Dispatchers.IO) { ApiClient.updateStatus(c.id, st) }
+                                                    if (ok) {
+                                                        val idx = complaints.indexOfFirst { it.id == c.id }
+                                                        if (idx != -1) {
+                                                            complaints[idx] = c.copy(status = st)
+                                                        }
+                                                        Toast.makeText(ctx, "Status updated to $st", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                }
+                                            },
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = if (active) Color(0xFF667EEA) else Color(0x22FFFFFF)
+                                            ),
+                                            modifier = Modifier.weight(1f).height(32.dp),
+                                            contentPadding = androidx.compose.foundation.layout.PaddingValues(2.dp)
+                                        ) {
+                                            Text(st.take(7), style = MaterialTheme.typography.labelSmall, color = if (active) Color.White else Color(0xFFA0AEC0))
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(Modifier.height(12.dp))
+                    Button(
+                        onClick = { logoutUser() },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0x33EF4444)),
+                        modifier = Modifier.fillMaxWidth().height(46.dp)
+                    ) {
+                        Text("🚪 Logout / Sign Out", color = Color(0xFFFCA5A5))
+                    }
+                }
+            }
 
             composable("raise") {
                 RaiseScreen(

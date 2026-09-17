@@ -254,6 +254,23 @@ object ApiClient {
         return list
     }
 
+    fun updateStatus(id: String, newStatus: String): Boolean {
+        return try {
+            val fields = JSONObject().put("status", JSONObject().put("stringValue", newStatus))
+            val payload = JSONObject().put("fields", fields).toString().toRequestBody(jsonMedia)
+
+            val req = Request.Builder()
+                .url("https://firestore.googleapis.com/v1/projects/$FIREBASE_PROJECT_ID/databases/(default)/documents/grievances/$id?updateMask.fieldPaths=status")
+                .patch(payload)
+                .build()
+            val resp = client.newCall(req).execute()
+            resp.isSuccessful
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
+
     fun analyze(message: String, location: String, image: File? = null): JSONObject? {
         return try {
             val req = if (image != null) {
