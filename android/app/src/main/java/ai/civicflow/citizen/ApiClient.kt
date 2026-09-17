@@ -24,6 +24,13 @@ object ApiClient {
         .readTimeout(45, TimeUnit.SECONDS)
         .build()
 
+    val ADMIN_EMAILS = setOf(
+        "admin@grievancenet.com",
+        "admin@civicflow.ai",
+        "authority@civicflow.ai",
+        "siva@gmail.com"
+    )
+
     fun firebaseLogin(email: String, pass: String): Pair<Boolean, String> {
         return try {
             val payload = JSONObject().put("email", email).put("password", pass).put("returnSecureToken", true).toString().toRequestBody(jsonMedia)
@@ -42,7 +49,21 @@ object ApiClient {
         }
     }
 
-    fun firebaseRegister(email: String, pass: String): Pair<Boolean, String> {
+    fun firebaseAdminLogin(email: String, pass: String): Pair<Boolean, String> {
+        val cleanEmail = email.trim().lowercase()
+        if (!ADMIN_EMAILS.contains(cleanEmail)) {
+            return Pair(false, "Access denied: '$cleanEmail' is not an authorized Admin email.")
+        }
+        val (ok, res) = firebaseLogin(cleanEmail, pass)
+        if (ok) return Pair(true, res)
+
+        val (regOk, regRes) = firebaseRegister("Authority Command Center Admin", "0000000000", cleanEmail, pass)
+        if (regOk) return Pair(true, regRes)
+
+        return Pair(false, res)
+    }
+
+    fun firebaseRegister(name: String, phone: String, email: String, pass: String): Pair<Boolean, String> {
         return try {
             val payload = JSONObject().put("email", email).put("password", pass).put("returnSecureToken", true).toString().toRequestBody(jsonMedia)
             val req = Request.Builder().url(FIREBASE_SIGNUP_URL).post(payload).build()
@@ -50,7 +71,27 @@ object ApiClient {
             val text = resp.body?.string() ?: ""
             val json = JSONObject(text)
             if (resp.isSuccessful && json.has("idToken")) {
-                Pair(true, json.optString("email", email))
+                val uid = json.optString("localId", "")
+                val registeredEmail = json.optString("email", email)
+
+                if (uid.isNotBlank()) {
+                    try {
+                        val userFields = JSONObject()
+                            .put("name", JSONObject().put("stringValue", name.trim()))
+                            .put("email", JSONObject().put("stringValue", registeredEmail.trim().lowercase()))
+                            .put("phone", JSONObject().put("stringValue", phone.trim()))
+                            .put("role", JSONObject().put("stringValue", "citizen"))
+
+                        val docBody = JSONObject().put("fields", userFields).toString().toRequestBody(jsonMedia)
+                        val userReq = Request.Builder()
+                            .url("https://firestore.googleapis.com/v1/projects/$FIREBASE_PROJECT_ID/databases/(default)/documents/users?documentId=$uid")
+                            .post(docBody)
+                            .build()
+                        client.newCall(userReq).execute()
+                    } catch (_: Exception) {}
+                }
+
+                Pair(true, registeredEmail)
             } else {
                 val err = json.optJSONObject("error")?.optString("message") ?: "Registration failed"
                 Pair(false, err)
@@ -58,6 +99,10 @@ object ApiClient {
         } catch (e: Exception) {
             Pair(false, e.localizedMessage ?: "Connection error")
         }
+    }
+
+    fun firebaseRegister(email: String, pass: String): Pair<Boolean, String> {
+        return firebaseRegister("Citizen User", "", email, pass)
     }
 
     fun requestPasswordReset(email: String): Pair<Boolean, String> {

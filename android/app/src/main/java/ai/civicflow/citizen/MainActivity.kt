@@ -116,6 +116,7 @@ fun CivicNav() {
     var photoBmp by remember { mutableStateOf<Bitmap?>(null) }
     var selectedId by remember { mutableStateOf<String?>(null) }
     var currentUserEmail by remember { mutableStateOf<String?>(null) }
+    var isAdminUser by remember { mutableStateOf(false) }
 
     val bg = Brush.verticalGradient(listOf(Navy, Color(0xFF151932), Color(0xFF1A1030)))
     Column(Modifier.fillMaxSize().background(bg)) {
@@ -135,48 +136,112 @@ fun CivicNav() {
             composable("login") {
                 var emailInput by remember { mutableStateOf("") }
                 var passInput by remember { mutableStateOf("") }
-                var isRegister by remember { mutableStateOf(false) }
+                var nameInput by remember { mutableStateOf("") }
+                var phoneInput by remember { mutableStateOf("") }
+                var authMode by remember { mutableStateOf("citizen") } // "citizen" | "admin" | "register"
                 var authLoading by remember { mutableStateOf(false) }
                 var authMsg by remember { mutableStateOf("") }
 
                 ScreenScaffold {
-                    Text(if (isRegister) "📝 Register Account" else "🔐 Citizen Login", style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        when (authMode) {
+                            "register" -> "📝 Register Account"
+                            "admin" -> "🛡️ Authority Admin Login"
+                            else -> "🔐 Citizen Login"
+                        },
+                        style = MaterialTheme.typography.titleLarge
+                    )
                     Text("Connects directly to CivicFlow Firebase project (civicflow-ai-b2144).", style = MaterialTheme.typography.bodyMedium, color = Color(0xFFA0AEC0))
+
+                    // Mode switch tabs (Citizen | Admin | Register)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        listOf("citizen" to "👤 Citizen", "admin" to "🛡 Admin", "register" to "📝 Register").forEach { (mode, label) ->
+                            val selected = authMode == mode
+                            Button(
+                                onClick = { authMode = mode; authMsg = "" },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (selected) Color(0xFF667EEA) else Color(0x22FFFFFF)
+                                ),
+                                modifier = Modifier.weight(1f).height(38.dp),
+                                contentPadding = androidx.compose.foundation.layout.PaddingValues(4.dp)
+                            ) {
+                                Text(label, style = MaterialTheme.typography.labelMedium, color = if (selected) Color.White else Color(0xFFA0AEC0))
+                            }
+                        }
+                    }
+
+                    if (authMode == "register") {
+                        OutlinedTextField(
+                            value = nameInput,
+                            onValueChange = { nameInput = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text("Full Name *") }
+                        )
+                        OutlinedTextField(
+                            value = phoneInput,
+                            onValueChange = { phoneInput = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text("Phone Number *") }
+                        )
+                    }
 
                     OutlinedTextField(
                         value = emailInput,
                         onValueChange = { emailInput = it },
                         modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Email Address") }
+                        label = { Text(if (authMode == "admin") "Admin Whitelisted Email *" else "Email Address *") }
                     )
                     OutlinedTextField(
                         value = passInput,
                         onValueChange = { passInput = it },
                         modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Password (min 6 characters)") }
+                        label = { Text("Password (min 6 characters) *") }
                     )
 
                     if (authMsg.isNotBlank()) {
-                        Text(authMsg, color = if (authMsg.contains("successful", true)) Color(0xFF34D399) else Color(0xFFFCA5A5))
+                        Text(authMsg, color = if (authMsg.contains("successful", true) || authMsg.contains("Logged in", true)) Color(0xFF34D399) else Color(0xFFFCA5A5))
                     }
 
                     Button(
                         onClick = {
-                            if (emailInput.isBlank() || passInput.isBlank()) {
-                                authMsg = "Please enter both email and password."
-                                return@Button
+                            if (authMode == "register") {
+                                if (nameInput.isBlank() || phoneInput.isBlank() || emailInput.isBlank() || passInput.isBlank()) {
+                                    authMsg = "All fields are required (Full Name, Phone Number, Email, Password)."
+                                    return@Button
+                                }
+                                if (phoneInput.trim().length < 7) {
+                                    authMsg = "Please enter a valid Phone Number (at least 7 digits)."
+                                    return@Button
+                                }
+                                if (passInput.length < 6) {
+                                    authMsg = "Password must be at least 6 characters."
+                                    return@Button
+                                }
+                            } else {
+                                if (emailInput.isBlank() || passInput.isBlank()) {
+                                    authMsg = "Please enter both email and password."
+                                    return@Button
+                                }
                             }
+
                             authLoading = true
                             authMsg = ""
                             scope.launch {
                                 val (ok, result) = withContext(Dispatchers.IO) {
-                                    if (isRegister) ApiClient.firebaseRegister(emailInput.trim(), passInput)
-                                    else ApiClient.firebaseLogin(emailInput.trim(), passInput)
+                                    when (authMode) {
+                                        "register" -> ApiClient.firebaseRegister(nameInput.trim(), phoneInput.trim(), emailInput.trim(), passInput)
+                                        "admin" -> ApiClient.firebaseAdminLogin(emailInput.trim(), passInput)
+                                        else -> ApiClient.firebaseLogin(emailInput.trim(), passInput)
+                                    }
                                 }
                                 authLoading = false
                                 if (ok) {
                                     currentUserEmail = result
-                                    Toast.makeText(ctx, "Logged in as $result", Toast.LENGTH_SHORT).show()
+                                    isAdminUser = (authMode == "admin") || ApiClient.ADMIN_EMAILS.contains(result.lowercase())
+                                    Toast.makeText(ctx, if (isAdminUser) "Logged in as Authority Admin: $result" else "Logged in as $result", Toast.LENGTH_SHORT).show()
                                     nav.navigate("home")
                                 } else {
                                     authMsg = "Authentication failed: $result"
@@ -189,29 +254,30 @@ fun CivicNav() {
                         if (authLoading) {
                             CircularProgressIndicator(modifier = Modifier.width(20.dp).height(20.dp), strokeWidth = 2.dp, color = Color.White)
                         } else {
-                            Text(if (isRegister) "Register Account" else "Sign In")
+                            Text(
+                                when (authMode) {
+                                    "register" -> "Create Citizen Account"
+                                    "admin" -> "Sign In as Admin"
+                                    else -> "Sign In as Citizen"
+                                }
+                            )
                         }
                     }
 
-                    Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                        TextButton(onClick = { isRegister = !isRegister; authMsg = "" }) {
-                            Text(if (isRegister) "Already have account? Sign In" else "New citizen? Create Account")
-                        }
-                        if (!isRegister) {
-                            TextButton(onClick = {
-                                if (emailInput.isBlank() || !emailInput.contains("@")) {
-                                    authMsg = "Enter your registered email address first."
-                                    return@TextButton
-                                }
-                                authLoading = true
-                                scope.launch {
-                                    val (ok, msg) = withContext(Dispatchers.IO) { ApiClient.requestPasswordReset(emailInput.trim()) }
-                                    authLoading = false
-                                    authMsg = if (ok) "✅ $msg" else "❌ $msg"
-                                }
-                            }) {
-                                Text("Forgot Password?", color = Color(0xFF60A5FA))
+                    if (authMode != "register") {
+                        TextButton(onClick = {
+                            if (emailInput.isBlank() || !emailInput.contains("@")) {
+                                authMsg = "Enter your registered email address first."
+                                return@TextButton
                             }
+                            authLoading = true
+                            scope.launch {
+                                val (ok, msg) = withContext(Dispatchers.IO) { ApiClient.requestPasswordReset(emailInput.trim()) }
+                                authLoading = false
+                                authMsg = if (ok) "✅ $msg" else "❌ $msg"
+                            }
+                        }) {
+                            Text("Forgot Password?", color = Color(0xFF60A5FA))
                         }
                     }
                 }
@@ -220,7 +286,11 @@ fun CivicNav() {
             composable("home") { ScreenScaffold {
                 Text("🏠 Citizen Control Hub", style = MaterialTheme.typography.titleLarge)
                 currentUserEmail?.let {
-                    Text("Logged in as: $it", style = MaterialTheme.typography.bodySmall, color = Color(0xFF34D399))
+                    Text(
+                        if (isAdminUser) "🛡️ Logged in as Authority Admin ($it)" else "Logged in as: $it",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (isAdminUser) Color(0xFFFBBF24) else Color(0xFF34D399)
+                    )
                 }
 
                 Card(colors = CardDefaults.cardColors(CardBg), shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
@@ -616,7 +686,8 @@ fun CivicNav() {
                 fun refreshGrievances() {
                     isRefreshing = true
                     scope.launch {
-                        val remoteList = withContext(Dispatchers.IO) { ApiClient.fetchFromFirestore(currentUserEmail) }
+                        val filterMail = if (isAdminUser) null else currentUserEmail
+                        val remoteList = withContext(Dispatchers.IO) { ApiClient.fetchFromFirestore(filterMail) }
                         isRefreshing = false
                         if (remoteList.isNotEmpty()) {
                             complaints.clear()
@@ -660,7 +731,10 @@ fun CivicNav() {
 
                 ScreenScaffold {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Text("📋 My Complaints (${complaints.size})", style = MaterialTheme.typography.titleLarge)
+                        Text(
+                            if (isAdminUser) "🛡️ Command Center Inbox (${complaints.size})" else "📋 My Complaints (${complaints.size})",
+                            style = MaterialTheme.typography.titleLarge
+                        )
                         Button(onClick = { refreshGrievances() }) {
                             Text("🔄 Sync")
                         }
