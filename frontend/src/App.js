@@ -101,7 +101,6 @@ export default function App() {
   const [assistantA, setAssistantA] = useState("");
   const [adminTab, setAdminTab] = useState("inbox");
   const [mapFilter, setMapFilter] = useState("All");
-  const [handoffText, setHandoffText] = useState("");
   const [slaMinutes, setSlaMinutes] = useState(SLA_DEFAULT);
   const recognitionRef = useRef(null);
 
@@ -982,7 +981,7 @@ export default function App() {
         </header>
 
         <div className="tabs" role="tablist">
-          {["inbox", "queue", "map", "clusters", "sla", "insights", "office"].map((t) => (
+          {["inbox", "queue", "map", "clusters", "sla", "insights"].map((t) => (
             <button key={t} className={`tab ${adminTab === t ? "active" : ""}`} onClick={() => setAdminTab(t)}>
               {t.toUpperCase()}
             </button>
@@ -1145,98 +1144,6 @@ export default function App() {
                   </p>
                 </div>
               ))}
-            </div>
-          </div>
-        )}
-
-        {adminTab === "office" && (
-          <div className="card">
-            <h2>📱 Office Kit Receive Desk</h2>
-            <p className="muted" style={{ marginBottom: 16 }}>
-              Cross-device phone-to-laptop transfer bridge (<code>civicflow.officekit.v1</code>). Ingests structured AI grievance packets shared via iQOO Office Kit, shared clipboard, or screen mirroring.
-            </p>
-            <textarea
-              className="input textarea"
-              rows={7}
-              value={handoffText}
-              onChange={(e) => setHandoffText(e.target.value)}
-              placeholder="Paste structured civicflow.officekit.v1 JSON packet here..."
-            />
-            <div className="actions" style={{ marginTop: 16 }}>
-              <button
-                className="btn primary"
-                onClick={async () => {
-                  if (!handoffText.trim()) {
-                    alert("Please paste a valid civicflow.officekit.v1 JSON packet first.");
-                    return;
-                  }
-                  try {
-                    const parsed = JSON.parse(handoffText);
-                    const g = parsed.grievance || parsed;
-                    await addDoc(collection(db, "grievances"), {
-                      userId: user.uid,
-                      citizenId: user.uid,
-                      citizenEmail: user.email || "",
-                      citizenName: "Phone Office Kit Handoff",
-                      problem: g.problem || "",
-                      city: g.city || "",
-                      detailedLocation: g.landmark || g.detailedLocation || "",
-                      latitude: g.latitude ?? null,
-                      longitude: g.longitude ?? null,
-                      department: g.department || "General",
-                      category: g.category || "",
-                      summary: g.summary || g.problem || "",
-                      severity: g.severity || "Medium",
-                      priorityScore: g.priorityScore ?? 50,
-                      priorityReason: g.priorityReason || "Imported via Office Kit packet.",
-                      routingReason: g.routingReason || "",
-                      confidence: g.confidence ?? 0,
-                      emergency: !!g.emergency,
-                      emergencyReason: g.emergencyReason || "",
-                      status: "Submitted",
-                      createdAt: serverTimestamp(),
-                      updatedAt: serverTimestamp(),
-                      source: "officekit-handoff",
-                      isDemo: false,
-                      slaMinutes: slaMinutes[g.severity] || 1440,
-                      slaDeadlineMs: Date.now() + (slaMinutes[g.severity] || 1440) * 60 * 1000,
-                    });
-                    alert(`✅ Successfully imported phone packet: "${g.problem || "Grievance"}" into Command Center!`);
-                    setHandoffText("");
-                  } catch {
-                    alert("❌ Invalid JSON — paste a valid civicflow.officekit.v1 packet.");
-                  }
-                }}
-              >
-                📥 Import Packet to Command Center
-              </button>
-              <button
-                className="btn secondary"
-                onClick={() => {
-                  const samplePacket = {
-                    type: "civicflow.officekit.v1",
-                    product: "CivicFlow AI",
-                    from: "phone-citizen-app",
-                    to: "authority-command-center",
-                    grievance: {
-                      problem: "Main water pipeline burst near Benz Circle causing severe road flooding",
-                      city: "Vijayawada",
-                      landmark: "Benz Circle, Vijayawada",
-                      department: "Water",
-                      severity: "Critical",
-                      priorityScore: 92,
-                      priorityReason: "High flow water burst threatening surrounding homes.",
-                      emergency: true,
-                      emergencyReason: "Active flooding on public roadway.",
-                      latitude: 16.5062,
-                      longitude: 80.6480
-                    }
-                  };
-                  setHandoffText(JSON.stringify(samplePacket, null, 2));
-                }}
-              >
-                📋 Load Sample Phone Packet
-              </button>
             </div>
           </div>
         )}
