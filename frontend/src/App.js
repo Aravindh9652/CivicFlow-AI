@@ -728,43 +728,6 @@ export default function App() {
     setLoading(false);
   };
 
-  const deleteOfficeGrievances = async () => {
-    const isOfficeDoc = (g) =>
-      g.source === "office" ||
-      g.via === "office" ||
-      g.isOffice ||
-      g.importedFrom === "officekit" ||
-      (g.problem && g.problem.toLowerCase().includes("office")) ||
-      (g.detailedLocation && g.detailedLocation.toLowerCase().includes("office"));
-
-    const officeItems = allGrievances.filter(isOfficeDoc);
-    if (officeItems.length === 0) {
-      alert("No office-submitted grievances found.");
-      return;
-    }
-
-    if (!window.confirm(`Delete ${officeItems.length} office-submitted complaint(s)?`)) {
-      return;
-    }
-
-    setLoading(true);
-    for (const g of officeItems) {
-      if (g.id) {
-        try {
-          await deleteDoc(doc(db, "grievances", g.id));
-        } catch (err) {
-          console.warn("Cloud delete office doc notice:", err);
-        }
-      }
-    }
-
-    setAllGrievances((prev) => prev.filter((g) => !isOfficeDoc(g)));
-    setGrievances((prev) => prev.filter((g) => !isOfficeDoc(g)));
-    setLoading(false);
-
-    alert(`✅ Removed ${officeItems.length} office-submitted complaint(s).`);
-  };
-
   const askAssistant = async () => {
     if (!assistantQ.trim()) return;
     try {
@@ -1067,15 +1030,8 @@ export default function App() {
                   >
                     🗑️ Delete demo sample data
                   </button>
-                  <button
-                    className="btn secondary"
-                    style={{ background: "rgba(245, 158, 11, 0.15)", borderColor: "rgba(245, 158, 11, 0.3)", color: "#fcd34d" }}
-                    onClick={deleteOfficeGrievances}
-                  >
-                    🗑️ Delete office complaints
-                  </button>
                   <p className="muted" style={{ margin: 0 }}>
-                    Removes all office-submitted grievance records.
+                    Keep original complaints only (removes all demo sample rows).
                   </p>
                 </div>
               </div>
