@@ -1127,8 +1127,25 @@ export default function App() {
 
         {adminTab === "insights" && (
           <div className="card">
-            <h2>Authority AI Insights</h2>
-            {insights.map((n) => <p key={n}>• {n}</p>)}
+            <h2>💡 Authority AI Insights</h2>
+            <p className="muted" style={{ marginBottom: 20 }}>
+              Automated executive decision-support engine. Computes city-wide workload bottlenecks, department distribution ratios, geographic issue clusters, and week-over-week trend surges.
+            </p>
+            <div className="insights-list" style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              {insights.map((n, idx) => (
+                <div key={idx} className="grievance-card" style={{ display: "flex", alignItems: "center", gap: "12px", padding: "14px 18px" }}>
+                  <span style={{ fontSize: "1.3rem" }}>
+                    {n.includes("emergency") || n.includes("emergencies") ? "🚨" :
+                     n.includes("represent") || n.includes("backlog") ? "📊" :
+                     n.includes("cluster") ? "⭕" :
+                     n.includes("increased") || n.includes("changed") ? "📈" : "💡"}
+                  </span>
+                  <p style={{ margin: 0, fontSize: "0.98rem", color: "#e2e8f0", lineHeight: 1.5 }}>
+                    {n}
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
