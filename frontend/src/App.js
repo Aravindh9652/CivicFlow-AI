@@ -269,12 +269,25 @@ export default function App() {
       setAuthError("Please enter your registered email address first.");
       return;
     }
+    const cleanMail = email.trim().toLowerCase();
     try {
-      await sendPasswordResetEmail(auth, email.trim());
-      setAuthError("✅ Password reset link sent! Check your email inbox.");
+      await sendPasswordResetEmail(auth, cleanMail);
+
+      // Trigger backend SMTP notification as secondary delivery guarantee
+      try {
+        await fetch(`${API_URL}/request-password-reset`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: cleanMail }),
+        });
+      } catch {
+        /* silent backend fetch fallback */
+      }
+
+      setAuthError("✅ Password reset email dispatched! Please check your Inbox and Spam/Junk folder.");
     } catch (err) {
       if (err.code === "auth/user-not-found") {
-        setAuthError("No account found with this email address.");
+        setAuthError("No Firebase account found with this email address. Please register first.");
       } else if (err.code === "auth/invalid-email") {
         setAuthError("Please enter a valid email address.");
       } else {

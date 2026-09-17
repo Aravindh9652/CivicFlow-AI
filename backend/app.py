@@ -453,6 +453,38 @@ def office_kit_handoff():
     return jsonify(packet)
 
 
+@app.route("/request-password-reset", methods=["POST"])
+def request_password_reset():
+    data = request.get_json() or {}
+    email = (data.get("email") or "").strip().lower()
+    if not email or "@" not in email:
+        return jsonify({"error": "Valid email required"}), 400
+
+    subject = "CivicFlow AI — Password Reset Confirmation & Instructions"
+    body = f"""
+Hello,
+
+We received a password reset request for your CivicFlow AI citizen account ({email}).
+
+Important Steps to Reset Your Password:
+1. Firebase Authentication has dispatched a password reset link to this email address.
+2. If you do not see the automated email in your Primary Inbox within a few minutes, PLEASE CHECK YOUR SPAM / JUNK / PROMOTIONS FOLDER.
+3. If you registered your account using a dummy or different email, ensure you enter the exact email used during Citizen Registration.
+
+If you did not request a password reset, you can safely disregard this email. Your CivicFlow AI account remains secure.
+
+Thank you,
+CivicFlow AI Support Team
+"""
+    try:
+        if SENDER_EMAIL and SENDER_PASSWORD:
+            send_email(email, subject, body)
+            return jsonify({"status": "Password reset notification email dispatched via SMTP."})
+        return jsonify({"status": "SMTP credentials not set, relying on standard Firebase Auth delivery."})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 # ---------------- SEND EMAIL ----------------
 @app.route("/send-email", methods=["POST"])
 def send_mail_api():
