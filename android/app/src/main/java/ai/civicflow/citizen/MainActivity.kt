@@ -104,6 +104,7 @@ fun CivicNav() {
     val nav = rememberNavController()
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
+    val prefs = remember { ctx.getSharedPreferences("civicflow_prefs", Context.MODE_PRIVATE) }
 
     val complaints = remember { mutableStateListOf<SavedComplaint>() }
     var problem by remember { mutableStateOf("") }
@@ -115,18 +116,42 @@ fun CivicNav() {
     var photoPath by remember { mutableStateOf<String?>(null) }
     var photoBmp by remember { mutableStateOf<Bitmap?>(null) }
     var selectedId by remember { mutableStateOf<String?>(null) }
-    var currentUserEmail by remember { mutableStateOf<String?>(null) }
-    var isAdminUser by remember { mutableStateOf(false) }
+    var currentUserEmail by remember { mutableStateOf(prefs.getString("user_email", null)) }
+    var isAdminUser by remember { mutableStateOf(prefs.getBoolean("is_admin", false)) }
+
+    fun resetForm() {
+        problem = ""
+        city = ""
+        analysis = null
+        lat = null
+        lng = null
+        landmark = ""
+        photoPath = null
+        photoBmp = null
+    }
+
+    fun logoutUser() {
+        prefs.edit().clear().apply()
+        currentUserEmail = null
+        isAdminUser = false
+        resetForm()
+        Toast.makeText(ctx, "Signed out successfully", Toast.LENGTH_SHORT).show()
+        nav.navigate("splash") {
+            popUpTo(0) { inclusive = true }
+        }
+    }
+
+    val startDest = if (!currentUserEmail.isNullOrBlank()) "home" else "splash"
 
     val bg = Brush.verticalGradient(listOf(Navy, Color(0xFF151932), Color(0xFF1A1030)))
     Column(Modifier.fillMaxSize().background(bg)) {
-        NavHost(nav, startDestination = "splash") {
+        NavHost(nav, startDestination = startDest) {
             composable("splash") { ScreenScaffold {
                 Text("🛡 CivicFlow AI", style = MaterialTheme.typography.headlineLarge, color = Color.White)
                 Text("Phone-first multimodal AI grievance intake platform for smart cities.", style = MaterialTheme.typography.bodyLarge, color = Color(0xFFA0AEC0))
                 Spacer(Modifier.height(20.dp))
                 Button(
-                    onClick = { nav.navigate(if (currentUserEmail != null) "home" else "login") },
+                    onClick = { nav.navigate(if (!currentUserEmail.isNullOrBlank()) "home" else "login") },
                     modifier = Modifier.fillMaxWidth().height(50.dp)
                 ) {
                     Text("Get Started")
@@ -241,6 +266,7 @@ fun CivicNav() {
                                 if (ok) {
                                     currentUserEmail = result
                                     isAdminUser = (authMode == "admin") || ApiClient.ADMIN_EMAILS.contains(result.lowercase())
+                                    prefs.edit().putString("user_email", result).putBoolean("is_admin", isAdminUser).apply()
                                     Toast.makeText(ctx, if (isAdminUser) "Logged in as Authority Admin: $result" else "Logged in as $result", Toast.LENGTH_SHORT).show()
                                     nav.navigate("home")
                                 } else {
@@ -284,7 +310,13 @@ fun CivicNav() {
             }
 
             composable("home") { ScreenScaffold {
-                Text("🏠 Citizen Control Hub", style = MaterialTheme.typography.titleLarge)
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text("🏠 Citizen Control Hub", style = MaterialTheme.typography.titleLarge)
+                    TextButton(onClick = { logoutUser() }) {
+                        Text("🚪 Sign Out", color = Color(0xFFFCA5A5))
+                    }
+                }
+
                 currentUserEmail?.let {
                     Text(
                         if (isAdminUser) "🛡️ Logged in as Authority Admin ($it)" else "Logged in as: $it",
@@ -296,8 +328,8 @@ fun CivicNav() {
                 Card(colors = CardDefaults.cardColors(CardBg), shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text("📢 Submit New Grievance", style = MaterialTheme.typography.titleMedium)
-                        Text("Capture camera photo, record voice notes, or auto-fetch GPS location for rapid AI intake.")
-                        Button(onClick = { nav.navigate("raise") }, modifier = Modifier.fillMaxWidth()) {
+                        Text("Capture camera photo, upload gallery image, record voice notes, or auto-fetch GPS location.")
+                        Button(onClick = { resetForm(); nav.navigate("raise") }, modifier = Modifier.fillMaxWidth()) {
                             Text("Raise Complaint Now")
                         }
                     }
@@ -315,12 +347,21 @@ fun CivicNav() {
 
                 Card(colors = CardDefaults.cardColors(CardBg), shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text("🤖 Citizen AI Assistant", style = MaterialTheme.typography.titleMedium)
-                        Text("Ask questions about civic rights, SLAs, or grievance progress.")
+                        Text("🤖 General AI Assistant", style = MaterialTheme.typography.titleMedium)
+                        Text("Ask any question in the world (science, tech, AI, civic issues, general knowledge).")
                         Button(onClick = { nav.navigate("assistant") }, modifier = Modifier.fillMaxWidth()) {
                             Text("Open AI Assistant")
                         }
                     }
+                }
+
+                Spacer(Modifier.height(12.dp))
+                Button(
+                    onClick = { logoutUser() },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0x33EF4444)),
+                    modifier = Modifier.fillMaxWidth().height(46.dp)
+                ) {
+                    Text("🚪 Logout / Sign Out", color = Color(0xFFFCA5A5))
                 }
             } }
 
@@ -360,9 +401,22 @@ fun CivicNav() {
                     if (compressedBmp != null && path != null) {
                         photoBmp = compressedBmp
                         photoPath = path
-                        Toast.makeText(ctx, "📷 Evidence captured and compressed successfully!", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(ctx, "📷 Evidence attached and compressed successfully!", Toast.LENGTH_SHORT).show()
                     } else {
-                        Toast.makeText(ctx, "Failed to capture image", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(ctx, "Failed to capture or load image", Toast.LENGTH_SHORT).show()
+                    }
+                }
+
+                val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+                    if (uri != null) {
+                        try {
+                            val inputStream = ctx.contentResolver.openInputStream(uri)
+                            val file = File(ctx.cacheDir, "civic_evidence_${System.currentTimeMillis()}.jpg")
+                            file.outputStream().use { out -> inputStream?.copyTo(out) }
+                            processAndSetImage(file, null)
+                        } catch (_: Exception) {
+                            Toast.makeText(ctx, "Failed to load image from gallery", Toast.LENGTH_SHORT).show()
+                        }
                     }
                 }
 
@@ -412,8 +466,8 @@ fun CivicNav() {
                 }
 
                 ScreenScaffold {
-                    Text("📸 Camera Evidence Intake", style = MaterialTheme.typography.titleLarge)
-                    Text("Capture clear photo evidence of potholes, water leaks, garbage, or structural hazards. The compressed photo is sent directly to the AI analysis pipeline.")
+                    Text("📸 Photo Evidence Intake", style = MaterialTheme.typography.titleLarge)
+                    Text("Capture a live camera photo or upload an image from your gallery. The compressed photo is sent directly to the AI analysis pipeline.")
 
                     if (photoBmp != null && photoPath != null) {
                         val fileSizeKb = (File(photoPath!!).length() / 1024).toInt()
@@ -434,12 +488,18 @@ fun CivicNav() {
                                         .clip(RoundedCornerShape(12.dp))
                                         .border(1.dp, Color(0x40667EEA), RoundedCornerShape(12.dp))
                                 )
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
                                     Button(
                                         onClick = { launchCameraFlow() },
                                         modifier = Modifier.weight(1f)
                                     ) {
-                                        Text("📷 Retake Photo")
+                                        Text("📷 Camera")
+                                    }
+                                    Button(
+                                        onClick = { galleryLauncher.launch("image/*") },
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text("🖼️ Gallery")
                                     }
                                     Button(
                                         onClick = {
@@ -465,9 +525,14 @@ fun CivicNav() {
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
-                                Text("No image attached yet")
-                                Button(onClick = { launchCameraFlow() }) {
-                                    Text("📷 Open Camera")
+                                Text("No photo attached yet")
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                                    Button(onClick = { launchCameraFlow() }, modifier = Modifier.weight(1f)) {
+                                        Text("📷 Open Camera")
+                                    }
+                                    Button(onClick = { galleryLauncher.launch("image/*") }, modifier = Modifier.weight(1f)) {
+                                        Text("🖼️ Upload Photo")
+                                    }
                                 }
                             }
                         }
@@ -667,6 +732,8 @@ fun CivicNav() {
                             val docId = withContext(Dispatchers.IO) { ApiClient.saveToFirestore(payload) } ?: localId
                             complaints.add(0, SavedComplaint(docId, problem, a, lat, lng, "Submitted", photoPath))
 
+                            resetForm()
+
                             NotificationHelper.statusSaved(
                                 ctx,
                                 "CivicFlow Grievance Submitted",
@@ -845,14 +912,14 @@ fun CivicNav() {
                 var asking by remember { mutableStateOf(false) }
 
                 ScreenScaffold {
-                    Text("🤖 Citizen AI Assistant", style = MaterialTheme.typography.titleLarge)
-                    Text("Ask any civic question e.g. 'What is SLA for water leaks?' or 'How does CivicFlow route complaints?'")
+                    Text("🤖 General AI Assistant", style = MaterialTheme.typography.titleLarge)
+                    Text("Ask any question in the world (e.g. 'What is AI?', 'How does solar power work?', 'What is SLA for road repairs?', 'Explain gravity').")
 
                     OutlinedTextField(
                         value = q,
                         onValueChange = { q = it },
                         modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Your question") }
+                        label = { Text("Ask any question...") }
                     )
 
                     Button(

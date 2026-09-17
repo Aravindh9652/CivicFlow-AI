@@ -335,7 +335,25 @@ def insights():
 def _answer_assistant_query(question: str, problem: str, city: str, context: dict, analysis: dict) -> str:
     q = question.lower().strip()
 
-    # Explicit civic feature questions
+    # 1. Direct Gemini Call for ANY real-world, general knowledge, tech, science, or civic question
+    if os.getenv("GEMINI_API_KEY"):
+        try:
+            model = genai.GenerativeModel(GEMINI_MODEL)
+            prompt = (
+                "You are CivicFlow AI's helpful general assistant.\n"
+                "Answer the user's question clearly, accurately, and politely in 2 to 4 sentences.\n"
+                "You must answer ANY real-world question (e.g. about artificial intelligence, science, history, daily life, tech, or civic processes).\n\n"
+                f"Question: {question}\n"
+            )
+            response = model.generate_content(prompt)
+            if response and response.text:
+                ans = response.text.strip()
+                if ans:
+                    return ans
+        except Exception as err:
+            print("Assistant Gemini direct Q&A notice:", err)
+
+    # 2. Specific civic context overrides (if offline / fallback)
     if "department" in q or "who handles" in q or "rout" in q:
         return (
             f"Recommended department: {analysis['department']}. "
@@ -349,43 +367,13 @@ def _answer_assistant_query(question: str, problem: str, city: str, context: dic
     if "status" in q or "track" in q:
         status = context.get("status") or "Not submitted yet"
         return f"Current tracked status: {status}. Authorities update this real-time from the command center."
-    if "duplicate" in q:
-        return (
-            "CivicFlow checks semantic similarity, department, and GPS proximity "
-            "before submission. You can still file a new report if it is a distinct incident."
-        )
-    if "attach" in q or "photo" in q or "camera" in q:
-        return (
-            "Attach a clear photo of the issue, keep GPS on, and add a landmark. "
-            "Do not photograph people in distress if it delays calling 112."
-        )
-    if analysis.get("emergency") or "emergency" in q:
-        return analysis["advice"]
 
-    # Call Gemini directly for any general knowledge, AI, or platform question
-    if os.getenv("GEMINI_API_KEY"):
-        try:
-            model = genai.GenerativeModel(GEMINI_MODEL)
-            prompt = (
-                "You are CivicFlow AI's helpful citizen assistant.\n"
-                "Answer the user's question clearly, accurately, and politely in 2 to 4 sentences.\n"
-                "If it's a general question (e.g. about AI, technology, civic processes, or life advice), answer it directly.\n\n"
-                f"Question: {question}\n"
-            )
-            response = model.generate_content(prompt)
-            if response and response.text:
-                ans = response.text.strip()
-                if ans:
-                    return ans
-        except Exception as err:
-            print("Assistant Gemini direct Q&A fallback notice:", err)
-
-    # Intelligent offline/fallback responses for non-civic or general queries
-    if "llm" in q or "large language model" in q or "ai" in q or "model" in q:
+    # 3. Rich general knowledge fallbacks when offline
+    if "llm" in q or "large language model" in q or "ai" in q or "artificial intelligence" in q:
         return (
-            "LLMs (Large Language Models) are deep-learning AI models trained on text to understand, summarize, and generate human language. "
-            "In CivicFlow AI, we use LLMs like Google Gemini alongside local open-source models to analyze grievances, calculate priority scores, "
-            "draft formal authority emails, and answer your queries."
+            "Artificial Intelligence (AI) is the simulation of human intelligence by computer systems, enabling machines to learn, reason, "
+            "and solve problems. In CivicFlow AI, LLMs like Google Gemini automatically classify civic issues, calculate priority scores, "
+            "and answer any questions you ask."
         )
     if "civicflow" in q or "what is this" in q or "how does" in q or "help" in q:
         return (
@@ -394,9 +382,8 @@ def _answer_assistant_query(question: str, problem: str, city: str, context: dic
         )
 
     return (
-        f"Regarding '{question}': I am your CivicFlow AI assistant! You can ask me any question about civic issue routing, "
-        f"priority scores, tracking your complaint, or general inquiries. For this report ({analysis['department']}), "
-        f"ensure your location and description are accurate before submitting."
+        f"Regarding '{question}': I am your CivicFlow AI assistant! I can answer any question about science, technology, general knowledge, or civic issues. "
+        f"If you're asking about your current grievance ({analysis.get('department', 'General')}), your report is being processed."
     )
 
 
