@@ -712,6 +712,59 @@ export default function App() {
     alert(`✅ Removed ${demoItems.length} demo sample grievance(s). Showing original citizen complaints only!`);
   };
 
+  const deleteGrievance = async (id) => {
+    if (!id) return;
+    if (!window.confirm("Are you sure you want to delete this complaint?")) return;
+
+    setLoading(true);
+    try {
+      await deleteDoc(doc(db, "grievances", id));
+    } catch (err) {
+      console.warn("Cloud delete grievance notice:", err);
+    }
+    setAllGrievances((prev) => prev.filter((g) => g.id !== id));
+    setGrievances((prev) => prev.filter((g) => g.id !== id));
+    if (selectedGrievanceId === id) setSelectedGrievanceId(null);
+    setLoading(false);
+  };
+
+  const deleteOfficeGrievances = async () => {
+    const isOfficeDoc = (g) =>
+      g.source === "office" ||
+      g.via === "office" ||
+      g.isOffice ||
+      g.importedFrom === "officekit" ||
+      (g.problem && g.problem.toLowerCase().includes("office")) ||
+      (g.detailedLocation && g.detailedLocation.toLowerCase().includes("office"));
+
+    const officeItems = allGrievances.filter(isOfficeDoc);
+    if (officeItems.length === 0) {
+      alert("No office-submitted grievances found.");
+      return;
+    }
+
+    if (!window.confirm(`Delete ${officeItems.length} office-submitted complaint(s)?`)) {
+      return;
+    }
+
+    setLoading(true);
+    for (const g of officeItems) {
+      if (g.id) {
+        try {
+          await deleteDoc(doc(db, "grievances", g.id));
+        } catch (err) {
+          console.warn("Cloud delete office doc notice:", err);
+        }
+      }
+    }
+
+    setAllGrievances((prev) => prev.filter((g) => !isOfficeDoc(g)));
+    setGrievances((prev) => prev.filter((g) => !isOfficeDoc(g)));
+    setLoading(false);
+
+    alert(`✅ Removed ${officeItems.length} office-submitted complaint(s).`);
+  };
+
   const askAssistant = async () => {
     if (!assistantQ.trim()) return;
     try {
@@ -975,7 +1028,7 @@ export default function App() {
         <header className="hero">
           <div className="hero-inner">
             <h1>🛡 CivicFlow AI Command Center</h1>
-            <p className="tagline">Authority queue, hotspots, clusters, SLA tracking, and Office Kit handoff.</p>
+            <p className="tagline">Authority queue, hotspots, clusters, SLA tracking, and real-time insights.</p>
           </div>
           <button className="btn ghost" onClick={logout}>Logout</button>
         </header>
@@ -992,9 +1045,9 @@ export default function App() {
           <div className="content">
             <div className="card">
               <h2>AI Action Queue</h2>
-              <QueueColumn title="CRITICAL" items={critical} updateStatus={updateStatus} slaMinutes={slaMinutes} />
-              <QueueColumn title="HIGH" items={high} updateStatus={updateStatus} slaMinutes={slaMinutes} />
-              <QueueColumn title="NORMAL" items={normal} updateStatus={updateStatus} slaMinutes={slaMinutes} />
+              <QueueColumn title="CRITICAL" items={critical} updateStatus={updateStatus} deleteGrievance={deleteGrievance} slaMinutes={slaMinutes} />
+              <QueueColumn title="HIGH" items={high} updateStatus={updateStatus} deleteGrievance={deleteGrievance} slaMinutes={slaMinutes} />
+              <QueueColumn title="NORMAL" items={normal} updateStatus={updateStatus} deleteGrievance={deleteGrievance} slaMinutes={slaMinutes} />
             </div>
             <aside className="sidebar">
               <div className="card small">
@@ -1014,8 +1067,15 @@ export default function App() {
                   >
                     🗑️ Delete demo sample data
                   </button>
+                  <button
+                    className="btn secondary"
+                    style={{ background: "rgba(245, 158, 11, 0.15)", borderColor: "rgba(245, 158, 11, 0.3)", color: "#fcd34d" }}
+                    onClick={deleteOfficeGrievances}
+                  >
+                    🗑️ Delete office complaints
+                  </button>
                   <p className="muted" style={{ margin: 0 }}>
-                    Keep original complaints only (removes all demo sample rows).
+                    Removes all office-submitted grievance records.
                   </p>
                 </div>
               </div>
@@ -1149,7 +1209,7 @@ export default function App() {
         )}
 
         {adminTab === "inbox" && (
-          <AdminDashboard grievances={allGrievances} updateStatus={updateStatus} />
+          <AdminDashboard grievances={allGrievances} updateStatus={updateStatus} deleteGrievance={deleteGrievance} />
         )}
       </div>
     );
@@ -1597,19 +1657,31 @@ function HotspotMap({ filtered, clusters }) {
   );
 }
 
-function QueueColumn({ title, items, updateStatus, slaMinutes }) {
+function QueueColumn({ title, items, updateStatus, deleteGrievance, slaMinutes }) {
   return (
     <div className="queue-col" style={{ marginTop: 18 }}>
       <h3>{title} · {items.length} incidents</h3>
       {items.map((g) => {
         const dead = g.slaDeadlineMs || slaDeadlineFrom(g.createdAt, g.severity, slaMinutes);
         const st = slaState(dead, g.status);
-        const code = `CF-${g.id.substring(0, 8).toUpperCase()}`;
+        const code = `CF-${(g.id || "").substring(0, 8).toUpperCase()}`;
         return (
           <div key={g.id} className="grievance-card">
-            <div className="row space-between">
+            <div className="row space-between" style={{ alignItems: "center" }}>
               <span className="code-pill">{code}</span>
-              {g.isDemo && <span className="badge badge-medium">DEMO / SAMPLE</span>}
+              <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                {g.isDemo && <span className="badge badge-medium">DEMO / SAMPLE</span>}
+                {deleteGrievance && (
+                  <button
+                    className="btn ghost btn-sm"
+                    style={{ color: "#ef4444", padding: "2px 6px", fontSize: "0.75rem", border: "1px solid rgba(239,68,68,0.3)" }}
+                    onClick={() => deleteGrievance(g.id)}
+                    title="Delete complaint"
+                  >
+                    🗑️ Delete
+                  </button>
+                )}
+              </div>
             </div>
             {g.emergency && <span className="badge badge-emergency">Emergency</span>}
             <p style={{ marginTop: 6 }}><strong>{g.category || g.summary || g.problem}</strong></p>
@@ -1636,50 +1708,66 @@ function QueueColumn({ title, items, updateStatus, slaMinutes }) {
   );
 }
 
-function AdminDashboard({ grievances, updateStatus }) {
+function AdminDashboard({ grievances, updateStatus, deleteGrievance }) {
   return (
     <div className="card">
       <h2>🛠 Admin Grievance Panel</h2>
-      {grievances.map((g) => (
-        <div key={g.id} className="grievance-card">
-          <div className="row space-between" style={{ alignItems: "center", marginBottom: "8px" }}>
-            <span className="code-pill">{`CF-${g.id.substring(0, 8).toUpperCase()}`}</span>
-            <span className={badgeClass(g.severity, g.emergency)}>
-              📋 Department: {g.department || "General"}
-            </span>
+      {grievances.length === 0 ? (
+        <p className="muted">No grievances currently in system.</p>
+      ) : (
+        grievances.map((g) => (
+          <div key={g.id} className="grievance-card">
+            <div className="row space-between" style={{ alignItems: "center", marginBottom: "8px" }}>
+              <span className="code-pill">{`CF-${(g.id || "").substring(0, 8).toUpperCase()}`}</span>
+              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                <span className={badgeClass(g.severity, g.emergency)}>
+                  📋 Department: {g.department || "General"}
+                </span>
+                {deleteGrievance && (
+                  <button
+                    className="btn ghost btn-sm"
+                    style={{ color: "#ef4444", padding: "3px 8px", fontSize: "0.8rem", border: "1px solid rgba(239,68,68,0.3)", borderRadius: "4px" }}
+                    onClick={() => deleteGrievance(g.id)}
+                    title="Delete complaint"
+                  >
+                    🗑️ Delete
+                  </button>
+                )}
+              </div>
+            </div>
+            <p><b>Issue:</b> {g.problem}</p>
+            <p>
+              <b>📋 Classified Department:</b>{" "}
+              <strong style={{ color: "#f093fb" }}>{g.department || "General"}</strong>{" "}
+              {g.category ? `(${g.category})` : ""}
+            </p>
+            <p><b>City:</b> {g.city || "Captured via GPS"}</p>
+            <p className="muted">
+              <b>Submitted:</b>{" "}
+              {g.createdAt?.toDate ? g.createdAt.toDate().toLocaleString() : "Just now"}
+            </p>
+            {g.latitude && g.longitude && (
+              <p><b>📍 Location:</b> {g.latitude}, {g.longitude}</p>
+            )}
+            {g.detailedLocation && <p><b>🏷 Landmark:</b> {g.detailedLocation}</p>}
+            <div className="status-row">
+              <span className="status-label">Status:</span>
+              <select
+                className={`status-select status-${(g.status || "Submitted").toLowerCase().replace(/\s+/g, "-")}`}
+                value={g.status || "Submitted"}
+                onChange={(e) => updateStatus(g.id, e.target.value)}
+              >
+                <option value="Submitted">Submitted</option>
+                <option value="Under Review">Under Review</option>
+                <option value="Assigned">Assigned</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Resolved">Resolved</option>
+                <option value="Rejected">Rejected</option>
+              </select>
+            </div>
           </div>
-          <p><b>Issue:</b> {g.problem}</p>
-          <p>
-            <b>📋 Classified Department:</b>{" "}
-            <strong style={{ color: "#f093fb" }}>{g.department || "General"}</strong>{" "}
-            {g.category ? `(${g.category})` : ""}
-          </p>
-          <p><b>City:</b> {g.city || "Captured via GPS"}</p>
-          <p className="muted">
-            <b>Submitted:</b>{" "}
-            {g.createdAt?.toDate ? g.createdAt.toDate().toLocaleString() : "Just now"}
-          </p>
-          {g.latitude && g.longitude && (
-            <p><b>📍 Location:</b> {g.latitude}, {g.longitude}</p>
-          )}
-          {g.detailedLocation && <p><b>🏷 Landmark:</b> {g.detailedLocation}</p>}
-          <div className="status-row">
-            <span className="status-label">Status:</span>
-            <select
-              className={`status-select status-${(g.status || "Submitted").toLowerCase().replace(/\s+/g, "-")}`}
-              value={g.status || "Submitted"}
-              onChange={(e) => updateStatus(g.id, e.target.value)}
-            >
-              <option value="Submitted">Submitted</option>
-              <option value="Under Review">Under Review</option>
-              <option value="Assigned">Assigned</option>
-              <option value="In Progress">In Progress</option>
-              <option value="Resolved">Resolved</option>
-              <option value="Rejected">Rejected</option>
-            </select>
-          </div>
-        </div>
-      ))}
+        ))
+      )}
     </div>
   );
 }

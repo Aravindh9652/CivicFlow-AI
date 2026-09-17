@@ -435,25 +435,6 @@ def demo_seed():
     return jsonify({"grievances": DEMO_GRIEVANCES, "isDemo": True})
 
 
-@app.route("/office-kit/handoff", methods=["POST"])
-def office_kit_handoff():
-    """Structured phone→laptop payload (clipboard / file transfer / mirroring)."""
-    data = request.get_json() or {}
-    packet = {
-        "type": "civicflow.officekit.v1",
-        "product": "CivicFlow AI",
-        "from": "phone-citizen-app",
-        "to": "authority-command-center",
-        "grievance": data,
-        "note": (
-            "Transfer this JSON to the laptop via iQOO Office Kit file share, "
-            "clipboard, or screen-mirroring plus copy. CivicFlow does not "
-            "programmatically control Office Kit."
-        ),
-    }
-    return jsonify(packet)
-
-
 @app.route("/request-password-reset", methods=["POST"])
 def request_password_reset():
     data = request.get_json() or {}
