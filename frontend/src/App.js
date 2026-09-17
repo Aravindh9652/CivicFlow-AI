@@ -1538,11 +1538,24 @@ function HotspotMap({ filtered, clusters }) {
   const { default: MapViewInner, Marker, Circle, Popup } = MapMod;
 
   const validItems = filtered.filter((g) => g.latitude != null && g.longitude != null);
-  const centerLat = validItems.length > 0 ? Number(validItems[0].latitude) : 16.5062;
-  const centerLng = validItems.length > 0 ? Number(validItems[0].longitude) : 80.6480;
+  let centerLat = 16.5062;
+  let centerLng = 80.6480;
+  let zoomLevel = 12;
+
+  if (validItems.length === 1) {
+    centerLat = Number(validItems[0].latitude);
+    centerLng = Number(validItems[0].longitude);
+    zoomLevel = 15;
+  } else if (validItems.length > 1) {
+    const sumLat = validItems.reduce((acc, g) => acc + Number(g.latitude), 0);
+    const sumLng = validItems.reduce((acc, g) => acc + Number(g.longitude), 0);
+    centerLat = sumLat / validItems.length;
+    centerLng = sumLng / validItems.length;
+    zoomLevel = 13;
+  }
 
   return (
-    <MapViewInner center={[centerLat, centerLng]} zoom={12}>
+    <MapViewInner center={[centerLat, centerLng]} zoom={zoomLevel}>
       {validItems.map((g) => (
         <Marker key={g.id} position={[Number(g.latitude), Number(g.longitude)]}>
           {Popup && (
