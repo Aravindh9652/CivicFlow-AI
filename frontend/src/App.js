@@ -1080,18 +1080,44 @@ export default function App() {
         {adminTab === "sla" && (
           <div className="card">
             <h2>SLA & Escalation Monitoring</h2>
-            <p className="muted">Target Response: Critical {slaMinutes.Critical}m · High {slaMinutes.High}m · Medium {slaMinutes.Medium}m · Low {slaMinutes.Low}m</p>
+            <p className="muted" style={{ marginBottom: 16 }}>
+              Track real-time resolution deadlines (Service Level Agreements) per severity. Overdue complaints trigger automated AI escalation warnings.
+            </p>
+            <div className="intel-grid" style={{ marginBottom: 20 }}>
+              <span className="badge badge-emergency">🚨 Critical: {slaMinutes.Critical || 15}m</span>
+              <span className="badge badge-high">⚡ High: {slaMinutes.High || 120}m</span>
+              <span className="badge badge-medium">📋 Medium: {slaMinutes.Medium || 1440}m (24h)</span>
+              <span className="badge badge-low">🟢 Low: {slaMinutes.Low || 4320}m (72h)</span>
+            </div>
             {allGrievances.map((g) => {
               const dead = g.slaDeadlineMs || slaDeadlineFrom(g.createdAt, g.severity, slaMinutes);
               const st = slaState(dead, g.status);
+              const code = `CF-${g.id.substring(0, 8).toUpperCase()}`;
               return (
-                <div key={g.id} className="grievance-card">
-                  <p><strong>{g.summary || g.problem}</strong></p>
-                  <p>SLA State: <span className={st.breached ? "badge badge-emergency" : "badge badge-high"}>{st.breached ? "SLA BREACHED" : st.label}</span></p>
+                <div key={g.id} className="grievance-card" style={{ marginBottom: 16 }}>
+                  <div className="row space-between" style={{ alignItems: "center", marginBottom: 8 }}>
+                    <span className="code-pill">{code}</span>
+                    <span className={badgeClass(g.severity, g.emergency)}>
+                      {g.department || "General"} · {g.severity || "Medium"}
+                    </span>
+                  </div>
+                  <p><strong>Problem:</strong> {g.problem}</p>
+                  <p>
+                    <strong>Current Status:</strong>{" "}
+                    <span className={`status-pill status-${(g.status || "Submitted").toLowerCase().replace(/\s+/g, "-")}`}>
+                      {g.status || "Submitted"}
+                    </span>
+                  </p>
+                  <p style={{ marginTop: 6 }}>
+                    <strong>SLA Target Response:</strong>{" "}
+                    <span className={st.breached ? "badge badge-emergency" : "badge badge-high"}>
+                      {st.breached ? "🚨 SLA BREACHED" : `⏱️ ${st.label}`}
+                    </span>
+                  </p>
                   {st.breached && (
-                    <p className="muted">
-                      AI recommends escalation because response target was exceeded.
-                    </p>
+                    <div className="emergency-banner" style={{ marginTop: 10 }}>
+                      <p><strong>⚠️ AI Escalation Triggered:</strong> Response deadline was exceeded. High priority reassignment recommended to Senior Department Supervisor.</p>
+                    </div>
                   )}
                 </div>
               );
