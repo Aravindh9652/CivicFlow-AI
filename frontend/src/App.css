@@ -850,3 +850,82 @@ body::before {
   .app-container { padding: 16px; }
   .timeline-container { overflow-x: auto; padding-bottom: 8px; }
 }
+
+/* Sidebar & Quick Tips UI (Matching original gemini-greivancenet.web.app) */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.tip-card {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 16px !important;
+  padding: 22px 24px !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25) !important;
+  transition: transform 0.25s ease, box-shadow 0.25s ease !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+.tip-card::before {
+  display: none !important;
+}
+
+.tip-card:hover {
+  transform: translateY(-3px) !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35) !important;
+}
+
+.tip-card h4 {
+  color: #ffffff !important;
+  font-size: 1.15rem !important;
+  font-weight: 700 !important;
+  font-family: "Poppins", "Inter", system-ui, sans-serif !important;
+  margin: 0 0 14px 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  letter-spacing: -0.2px !important;
+  -webkit-text-fill-color: #ffffff !important;
+  background: none !important;
+  filter: none !important;
+}
+
+.tip-list {
+  list-style: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+}
+
+.tip-list li {
+  font-size: 0.95rem !important;
+  color: #d1d5db !important;
+  font-family: "Poppins", "Inter", system-ui, sans-serif !important;
+  line-height: 1.5 !important;
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 10px !important;
+  margin: 0 !important;
+}
+
+.tip-list li .check-icon {
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  font-size: 1rem !important;
+  flex-shrink: 0 !important;
+}
+
+.tip-card p.muted {
+  color: #c7cce8 !important;
+  font-size: 0.93rem !important;
+  font-family: "Poppins", "Inter", system-ui, sans-serif !important;
+  line-height: 1.6 !important;
+  margin: 0 !important;
+}

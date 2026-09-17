@@ -1328,10 +1328,10 @@ export default function App() {
           <div className="card small tip-card">
             <h4>💡 Quick Tips</h4>
             <ul className="tip-list">
-              <li>✓ Be clear and concise in your description</li>
-              <li>✓ Include exact location details</li>
-              <li>✓ Attach photos for faster verification</li>
-              <li>✓ Use the map to pinpoint the spot</li>
+              <li><span className="check-icon">✓</span> Be clear and concise in your description</li>
+              <li><span className="check-icon">✓</span> Include exact location details</li>
+              <li><span className="check-icon">✓</span> Attach photos for faster verification</li>
+              <li><span className="check-icon">✓</span> Use the map to pinpoint the spot</li>
             </ul>
           </div>
           <div className="card small tip-card">
