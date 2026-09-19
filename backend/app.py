@@ -32,7 +32,7 @@ if os.getenv("GEMINI_API_KEY"):
 GEMINI_MODEL = "models/gemini-flash-latest"
 
 # ---------------- EMAIL & FIREBASE CONFIG ----------------
-SENDER_EMAIL = os.getenv("SENDER_EMAIL")
+SENDER_EMAIL = os.getenv("SENDER_EMAIL", "civicflow.grievance.ai@gmail.com")
 SENDER_PASSWORD = os.getenv("SENDER_PASSWORD")
 FIREBASE_API_KEY = os.getenv("FIREBASE_API_KEY", "AIzaSyCDFUc8TFbhnSlL5l1wgocwWCE6xxN4yl8")
 
@@ -470,10 +470,18 @@ def send_mail_api():
         detailed_location = request.form.get("detailed_location", "").strip()
         latitude = request.form.get("latitude", "").strip()
         longitude = request.form.get("longitude", "").strip()
+        citizen_email = request.form.get("citizen_email", "").strip()
         attachments = request.files.getlist("image")
 
         if not body:
             return jsonify({"error": "Mail body missing"}), 400
+
+        # Build list of recipient addresses: AUTHORITY_EMAIL + citizen_email
+        recipients = [AUTHORITY_EMAIL]
+        if citizen_email and "@" in citizen_email:
+            c_clean = citizen_email.lower()
+            if not any(r.lower() == c_clean for r in recipients):
+                recipients.append(citizen_email)
 
         # ✅ Google Maps clickable link
         maps_link = ""
@@ -499,14 +507,23 @@ Longitude: {longitude if longitude else "N/A"}
 -- Sent via CivicFlow AI (Gemini + local open-source first-pass)
 """
 
-        ok = send_email(
-            AUTHORITY_EMAIL,
-            "New Civic Grievance",
-            full_body,
-            attachments
-        )
+        sent_count = 0
+        for rcpt in recipients:
+            ok = send_email(
+                rcpt,
+                "New Civic Grievance Report",
+                full_body,
+                attachments
+            )
+            if ok:
+                sent_count += 1
 
-        return jsonify({"status": "Mail sent successfully" if ok else "Mail notification bypassed", "sent": ok})
+        is_sent = sent_count > 0
+        return jsonify({
+            "status": "Mail sent successfully" if is_sent else "Mail notification bypassed (check SENDER_PASSWORD on Render)",
+            "sent": is_sent,
+            "recipientsCount": sent_count
+        })
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500

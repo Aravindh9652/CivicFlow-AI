@@ -660,11 +660,13 @@ function getDeviceId() {
 
       let emailSent = false;
       try {
+        const uemail = user?.email || email || "";
         const formData = new FormData();
         formData.append("body", mailBody || problem);
         formData.append("detailed_location", detailedLocation);
         formData.append("latitude", coords?.lat || "");
         formData.append("longitude", coords?.lng || "");
+        if (uemail) formData.append("citizen_email", uemail);
         if (image) formData.append("image", image);
 
         const controller = new AbortController();
@@ -679,7 +681,7 @@ function getDeviceId() {
 
         if (res.ok) {
           const data = await res.json();
-          emailSent = !data.error;
+          emailSent = !!data.sent;
         }
       } catch (e) {
         console.warn("Email dispatch notice (saving grievance directly):", e);
