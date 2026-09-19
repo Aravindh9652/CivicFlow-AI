@@ -704,19 +704,7 @@ fun CivicNav() {
                                         Text("📍 GPS: $curLat, $curLng", style = MaterialTheme.typography.bodySmall, color = Color(0xFFA0AEC0))
                                         Text("🏷 Landmark: Vijayawada Urban, Vijayawada, NTR, Andhra Pradesh", style = MaterialTheme.typography.bodySmall, color = Color(0xFFA0AEC0))
                                         
-                                        StatusDropdownSelector(
-                                            currentStatus = c.status,
-                                            onStatusSelected = { st ->
-                                                scope.launch {
-                                                    val ok = withContext(Dispatchers.IO) { ApiClient.updateStatus(c.id, st) }
-                                                    if (ok) {
-                                                        val idx = complaints.indexOfFirst { it.id == c.id }
-                                                        if (idx != -1) complaints[idx] = c.copy(status = st)
-                                                        Toast.makeText(ctx, "Status updated to $st", Toast.LENGTH_SHORT).show()
-                                                    }
-                                                }
-                                            }
-                                        )
+                                        Text("Status: ${c.status}", style = MaterialTheme.typography.bodySmall, color = Color(0xFFFBBF24))
 
                                         Button(
                                             onClick = {
