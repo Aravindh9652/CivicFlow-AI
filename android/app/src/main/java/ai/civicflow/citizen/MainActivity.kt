@@ -37,9 +37,12 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Surface
@@ -106,7 +109,66 @@ data class SavedComplaint(
 )
 
 @Composable
+fun StatusDropdownSelector(
+    currentStatus: String,
+    onStatusSelected: (String) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val statusOptions = listOf("Submitted", "Under Review", "Assigned", "In Progress", "Resolved", "Rejected")
+
+    Box(modifier = Modifier.fillMaxWidth()) {
+        Button(
+            onClick = { expanded = true },
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0x22FFFFFF)),
+            shape = RoundedCornerShape(8.dp),
+            modifier = Modifier.fillMaxWidth().height(36.dp),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 2.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    currentStatus,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = when (currentStatus.lowercase()) {
+                        "resolved" -> Color(0xFF34D399)
+                        "in progress", "assigned", "under review" -> Color(0xFFFBBF24)
+                        "rejected" -> Color(0xFFFCA5A5)
+                        else -> Color(0xFF60A5FA)
+                    }
+                )
+                Text("▼", style = MaterialTheme.typography.labelSmall, color = Color(0xFFFBBF24))
+            }
+        }
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            modifier = Modifier.background(Color(0xFF1F2D37))
+        ) {
+            statusOptions.forEach { st ->
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            st,
+                            color = if (currentStatus.equals(st, true)) Color(0xFFFBBF24) else Color.White
+                        )
+                    },
+                    onClick = {
+                        expanded = false
+                        onStatusSelected(st)
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
 fun CivicNav() {
+
     val nav = rememberNavController()
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -519,30 +581,19 @@ fun CivicNav() {
                                         Text("🏷 Landmark: Vijayawada Urban, Vijayawada, NTR, Andhra Pradesh", style = MaterialTheme.typography.bodySmall, color = Color(0xFFA0AEC0))
 
                                         Text("Status:", style = MaterialTheme.typography.labelSmall, color = Color(0xFFA0AEC0))
-                                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.fillMaxWidth()) {
-                                            listOf("Under Review", "In Progress", "Resolved", "Rejected").forEach { st ->
-                                                val active = c.status.equals(st, true)
-                                                Button(
-                                                    onClick = {
-                                                        scope.launch {
-                                                            val ok = withContext(Dispatchers.IO) { ApiClient.updateStatus(c.id, st) }
-                                                            if (ok) {
-                                                                val idx = complaints.indexOfFirst { it.id == c.id }
-                                                                if (idx != -1) complaints[idx] = c.copy(status = st)
-                                                                Toast.makeText(ctx, "Status updated to $st", Toast.LENGTH_SHORT).show()
-                                                            }
-                                                        }
-                                                    },
-                                                    colors = ButtonDefaults.buttonColors(
-                                                        containerColor = if (active) Color(0xFF667EEA) else Color(0x22FFFFFF)
-                                                    ),
-                                                    modifier = Modifier.weight(1f).height(32.dp),
-                                                    contentPadding = androidx.compose.foundation.layout.PaddingValues(2.dp)
-                                                ) {
-                                                    Text(st.take(7), style = MaterialTheme.typography.labelSmall, color = if (active) Color.White else Color(0xFFA0AEC0))
+                                        StatusDropdownSelector(
+                                            currentStatus = c.status,
+                                            onStatusSelected = { st ->
+                                                scope.launch {
+                                                    val ok = withContext(Dispatchers.IO) { ApiClient.updateStatus(c.id, st) }
+                                                    if (ok) {
+                                                        val idx = complaints.indexOfFirst { it.id == c.id }
+                                                        if (idx != -1) complaints[idx] = c.copy(status = st)
+                                                        Toast.makeText(ctx, "Status updated to $st", Toast.LENGTH_SHORT).show()
+                                                    }
                                                 }
                                             }
-                                        }
+                                        )
                                     }
                                 }
                             }
@@ -578,30 +629,20 @@ fun CivicNav() {
                                         Text(c.problem, style = MaterialTheme.typography.bodyMedium, color = Color(0xFFD1D5DB))
                                         Text("SLA: ${if (c.status.equals("rejected", true)) "Rejected" else "SLA BREACHED"}", style = MaterialTheme.typography.labelSmall, color = Color(0xFFEF4444))
 
-                                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.fillMaxWidth()) {
-                                            listOf("Under Review", "In Progress", "Resolved", "Rejected").forEach { st ->
-                                                val active = c.status.equals(st, true)
-                                                Button(
-                                                    onClick = {
-                                                        scope.launch {
-                                                            val ok = withContext(Dispatchers.IO) { ApiClient.updateStatus(c.id, st) }
-                                                            if (ok) {
-                                                                val idx = complaints.indexOfFirst { it.id == c.id }
-                                                                if (idx != -1) complaints[idx] = c.copy(status = st)
-                                                                Toast.makeText(ctx, "Status updated to $st", Toast.LENGTH_SHORT).show()
-                                                            }
-                                                        }
-                                                    },
-                                                    colors = ButtonDefaults.buttonColors(
-                                                        containerColor = if (active) Color(0xFF667EEA) else Color(0x22FFFFFF)
-                                                    ),
-                                                    modifier = Modifier.weight(1f).height(32.dp),
-                                                    contentPadding = androidx.compose.foundation.layout.PaddingValues(2.dp)
-                                                ) {
-                                                    Text(st.take(7), style = MaterialTheme.typography.labelSmall, color = if (active) Color.White else Color(0xFFA0AEC0))
+                                        Text("Status:", style = MaterialTheme.typography.labelSmall, color = Color(0xFFA0AEC0))
+                                        StatusDropdownSelector(
+                                            currentStatus = c.status,
+                                            onStatusSelected = { st ->
+                                                scope.launch {
+                                                    val ok = withContext(Dispatchers.IO) { ApiClient.updateStatus(c.id, st) }
+                                                    if (ok) {
+                                                        val idx = complaints.indexOfFirst { it.id == c.id }
+                                                        if (idx != -1) complaints[idx] = c.copy(status = st)
+                                                        Toast.makeText(ctx, "Status updated to $st", Toast.LENGTH_SHORT).show()
+                                                    }
                                                 }
                                             }
-                                        }
+                                        )
                                     }
                                 }
                             }
@@ -638,12 +679,61 @@ fun CivicNav() {
                                 }
                             }
 
-                            complaints.forEach { c ->
+                            val filteredComplaints = complaints.filter { c ->
+                                when (mapFilter) {
+                                    "All" -> true
+                                    "Critical" -> c.analysis.emergency || c.analysis.severity.equals("Critical", true)
+                                    "High" -> c.analysis.severity.equals("High", true)
+                                    "Normal" -> !c.analysis.emergency && !c.analysis.severity.equals("Critical", true) && !c.analysis.severity.equals("High", true)
+                                    "Resolved" -> c.status.equals("Resolved", true)
+                                    "Pending" -> !c.status.equals("Resolved", true) && !c.status.equals("Rejected", true)
+                                    else -> c.analysis.department.contains(mapFilter, ignoreCase = true) || c.analysis.category.contains(mapFilter, ignoreCase = true)
+                                }
+                            }
+
+                            filteredComplaints.forEach { c ->
                                 Card(Modifier.fillMaxWidth().padding(vertical = 4.dp), colors = CardDefaults.cardColors(CardBg), shape = RoundedCornerShape(12.dp)) {
-                                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                        Text("📍 CF-${c.id.take(8).uppercase()} · ${c.analysis.department}", style = MaterialTheme.typography.titleSmall, color = Color.White)
-                                        Text("Location: Vijayawada Urban (16.4832, 80.6854)", style = MaterialTheme.typography.bodySmall, color = Color(0xFFA0AEC0))
+                                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                            Text("📍 CF-${c.id.take(8).uppercase()}", style = MaterialTheme.typography.titleSmall, color = Color.White)
+                                            Text("📋 ${c.analysis.department}", style = MaterialTheme.typography.labelSmall, color = Color(0xFFFBBF24))
+                                        }
                                         Text("Problem: ${c.problem}", style = MaterialTheme.typography.bodyMedium, color = Color(0xFFD1D5DB))
+                                        val curLat = c.lat ?: 16.483267
+                                        val curLng = c.lng ?: 80.685425
+                                        Text("📍 GPS: $curLat, $curLng", style = MaterialTheme.typography.bodySmall, color = Color(0xFFA0AEC0))
+                                        Text("🏷 Landmark: Vijayawada Urban, Vijayawada, NTR, Andhra Pradesh", style = MaterialTheme.typography.bodySmall, color = Color(0xFFA0AEC0))
+                                        
+                                        StatusDropdownSelector(
+                                            currentStatus = c.status,
+                                            onStatusSelected = { st ->
+                                                scope.launch {
+                                                    val ok = withContext(Dispatchers.IO) { ApiClient.updateStatus(c.id, st) }
+                                                    if (ok) {
+                                                        val idx = complaints.indexOfFirst { it.id == c.id }
+                                                        if (idx != -1) complaints[idx] = c.copy(status = st)
+                                                        Toast.makeText(ctx, "Status updated to $st", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                }
+                                            }
+                                        )
+
+                                        Button(
+                                            onClick = {
+                                                val mapIntent = Intent(Intent.ACTION_VIEW, Uri.parse("geo:$curLat,$curLng?q=$curLat,$curLng(${Uri.encode(c.problem)})"))
+                                                mapIntent.setPackage("com.google.android.apps.maps")
+                                                try {
+                                                    ctx.startActivity(mapIntent)
+                                                } catch (_: Exception) {
+                                                    ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://maps.google.com/?q=$curLat,$curLng")))
+                                                }
+                                            },
+                                            colors = ButtonDefaults.buttonColors(containerColor = Color(0x22667EEA)),
+                                            modifier = Modifier.fillMaxWidth().height(36.dp),
+                                            contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)
+                                        ) {
+                                            Text("🗺 Open in External Maps", style = MaterialTheme.typography.labelSmall, color = Color(0xFF60A5FA))
+                                        }
                                     }
                                 }
                             }
@@ -714,15 +804,6 @@ fun CivicNav() {
                                 }
                             }
                         }
-                    }
-
-                    Spacer(Modifier.height(12.dp))
-                    Button(
-                        onClick = { logoutUser() },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0x33EF4444)),
-                        modifier = Modifier.fillMaxWidth().height(46.dp)
-                    ) {
-                        Text("🚪 Logout / Sign Out", color = Color(0xFFFCA5A5))
                     }
                 }
             }
