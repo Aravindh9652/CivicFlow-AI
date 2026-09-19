@@ -118,14 +118,25 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
+function getDeviceId() {
+  try {
+    let id = localStorage.getItem("civicflow_device_id");
+    if (!id) {
+      id = "dev_" + Math.random().toString(36).substring(2, 12);
+      localStorage.setItem("civicflow_device_id", id);
+    }
+    return id;
+  } catch {
+    return "dev_guest";
+  }
+}
+
   // Citizen real-time grievances listener
   useEffect(() => {
-    if (!user) {
-      setGrievances([]);
-      return;
-    }
+    const devId = getDeviceId();
+    const mail = user?.email?.toLowerCase() || "";
+    const uid = user?.uid || "";
 
-    const mail = user.email?.toLowerCase() || "";
     const q = query(collection(db, "grievances"));
 
     const unsubscribe = onSnapshot(
@@ -138,9 +149,9 @@ export default function App() {
           }))
           .filter(
             (g) =>
-              g.userId === user.uid ||
-              g.citizenId === user.uid ||
-              (mail && g.citizenEmail?.toLowerCase() === mail)
+              (uid && (g.userId === uid || g.citizenId === uid)) ||
+              (mail && g.citizenEmail?.toLowerCase() === mail) ||
+              (devId && (g.deviceId === devId || g.userId === devId || g.citizenId === devId))
           );
         list.sort((a, b) => {
           const getMs = (item) => {
@@ -554,15 +565,17 @@ export default function App() {
       }
     }
 
-    const slaMins = slaMinutes[aiData?.severity] || SLA_DEFAULT.Medium;
-    const nowMs = Date.now();
-    const uid = user?.uid || "anonymous_user";
+    const devId = getDeviceId();
+    const uid = user?.uid || devId;
     const uemail = user?.email || email || "";
     const uname = name || user?.displayName || (uemail ? uemail.split("@")[0] : "Citizen");
+    const slaMins = slaMinutes[aiData?.severity] || SLA_DEFAULT.Medium;
+    const nowMs = Date.now();
 
     const docData = {
       userId: uid,
       citizenId: uid,
+      deviceId: devId,
       citizenEmail: uemail,
       citizenName: uname,
 
