@@ -31,9 +31,10 @@ if os.getenv("GEMINI_API_KEY"):
     genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 GEMINI_MODEL = "models/gemini-flash-latest"
 
-# ---------------- EMAIL CONFIG ----------------
+# ---------------- EMAIL & FIREBASE CONFIG ----------------
 SENDER_EMAIL = os.getenv("SENDER_EMAIL")
 SENDER_PASSWORD = os.getenv("SENDER_PASSWORD")
+FIREBASE_API_KEY = os.getenv("FIREBASE_API_KEY", "AIzaSyCDFUc8TFbhnSlL5l1wgocwWCE6xxN4yl8")
 
 # Same email for all departments (hackathon demo)
 # AUTHORITY_EMAIL imported from civic_intelligence (env-overridable)
@@ -429,29 +430,56 @@ def request_password_reset():
     if not email or "@" not in email:
         return jsonify({"error": "Valid email required"}), 400
 
-    subject = "CivicFlow AI — Password Reset Confirmation & Instructions"
+    # 1. Trigger Firebase Identity Toolkit REST API to dispatch official password reset link email
+    fb_sent = False
+    fb_error = None
+    try:
+        fb_url = f"https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key={FIREBASE_API_KEY}"
+        fb_payload = {"requestType": "PASSWORD_RESET", "email": email}
+        fb_resp = requests.post(fb_url, json=fb_payload, timeout=10)
+        if fb_resp.status_code == 200:
+            fb_sent = True
+        else:
+            err_obj = fb_resp.json().get("error", {})
+            fb_error = err_obj.get("message", "Firebase user not found or reset failed")
+    except Exception as e:
+        fb_error = str(e)
+
+    # 2. Prepare user notification email with direct reset portal link
+    subject = "🔑 Reset Your CivicFlow AI Password"
     body = f"""
 Hello,
 
 We received a password reset request for your CivicFlow AI citizen account ({email}).
 
-Important Steps to Reset Your Password:
-1. Firebase Authentication has dispatched a password reset link to this email address.
-2. If you do not see the automated email in your Primary Inbox within a few minutes, PLEASE CHECK YOUR SPAM / JUNK / PROMOTIONS FOLDER.
-3. If you registered your account using a dummy or different email, ensure you enter the exact email used during Citizen Registration.
+🔑 PASSWORD RESET INSTRUCTIONS:
+1. An official Firebase Password Reset Link has been dispatched to {email}.
+2. Check your inbox and Spam/Junk folder for an email from 'noreply@civicflow-ai-b2144.firebaseapp.com' or 'CivicFlow AI'.
+3. Click the password reset link in that email to enter your new password.
 
-If you did not request a password reset, you can safely disregard this email. Your CivicFlow AI account remains secure.
+Direct Password Action Portal:
+https://civicflow-ai-b2144.firebaseapp.com/__/auth/action
 
-Thank you,
+If you did not request a password reset, you can safely ignore this email. Your CivicFlow AI account remains secure.
+
+Best regards,
 CivicFlow AI Support Team
 """
     try:
         if SENDER_EMAIL and SENDER_PASSWORD:
             send_email(email, subject, body)
-            return jsonify({"status": "Password reset notification email dispatched via SMTP."})
-        return jsonify({"status": "SMTP credentials not set, relying on standard Firebase Auth delivery."})
+            return jsonify({
+                "status": "Password reset link dispatched! Please check your email inbox and Spam folder.",
+                "firebase_sent": fb_sent
+            })
+        if fb_sent:
+            return jsonify({
+                "status": "Password reset link dispatched via Firebase! Check your email inbox and Spam folder."
+            })
+        return jsonify({"error": fb_error or "Failed to send password reset email"}), 400
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 
 # ---------------- SEND EMAIL ----------------

@@ -138,20 +138,32 @@ object ApiClient {
 
     fun requestPasswordReset(email: String): Pair<Boolean, String> {
         return try {
+            // 1. Direct call to Firebase REST API sendOobCode
+            try {
+                val fbUrl = "https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=$FIREBASE_API_KEY"
+                val fbPayload = JSONObject().put("requestType", "PASSWORD_RESET").put("email", email).toString().toRequestBody(jsonMedia)
+                val fbReq = Request.Builder().url(fbUrl).post(fbPayload).build()
+                client.newCall(fbReq).execute()
+            } catch (ignored: Exception) {}
+
+            // 2. Call backend for SMTP notification dispatch
             val payload = JSONObject().put("email", email).toString().toRequestBody(jsonMedia)
             val req = Request.Builder().url("${BuildConfig.API_URL}/request-password-reset").post(payload).build()
             val resp = client.newCall(req).execute()
             val text = resp.body?.string() ?: ""
             val json = JSONObject(text)
             if (resp.isSuccessful) {
-                Pair(true, json.optString("message", "Password reset email sent successfully!"))
+                val statusMsg = json.optString("status", json.optString("message", "Password reset link sent to your email!"))
+                Pair(true, statusMsg)
             } else {
-                Pair(false, json.optString("error", "Failed to send reset email."))
+                val errMsg = json.optString("error", "Failed to send reset email.")
+                Pair(false, errMsg)
             }
         } catch (e: Exception) {
             Pair(false, e.localizedMessage ?: "Network error")
         }
     }
+
 
     fun saveToFirestore(item: JSONObject): String? {
         return try {
