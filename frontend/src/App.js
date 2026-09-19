@@ -380,13 +380,19 @@ export default function App() {
 
     setLoading(true);
     setAiData(null);
+    const safetyTimer = setTimeout(() => setLoading(false), 10000);
 
     try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 7000);
+
       const res = await fetch(`${API_URL}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: problem, location: city }),
+        signal: controller.signal,
       });
+      clearTimeout(timer);
 
       const data = await res.json();
       if (data.error) throw new Error(data.error);
@@ -396,9 +402,10 @@ export default function App() {
       const local = classifyLocal(problem, city);
       setAiData(local);
       setMailBody(local.draftedMail || "");
+    } finally {
+      clearTimeout(safetyTimer);
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   const analyzeMultimodal = async () => {
@@ -407,12 +414,24 @@ export default function App() {
       return;
     }
     setLoading(true);
+    const safetyTimer = setTimeout(() => setLoading(false), 10000);
+
     try {
       const form = new FormData();
       form.append("message", problem);
       form.append("location", city);
       if (image) form.append("image", image);
-      const res = await fetch(`${API_URL}/analyze`, { method: "POST", body: form });
+
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 7000);
+
+      const res = await fetch(`${API_URL}/analyze`, {
+        method: "POST",
+        body: form,
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       setAiData(data);
@@ -421,8 +440,10 @@ export default function App() {
       const local = classifyLocal(problem, city);
       setAiData(local);
       setMailBody(local.draftedMail || "");
+    } finally {
+      clearTimeout(safetyTimer);
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const getCurrentLocation = () => {
@@ -495,6 +516,9 @@ export default function App() {
         createdAt: g.createdAt?.toDate ? g.createdAt.toDate().toISOString() : null,
         clusterId: g.clusterId || null,
       }));
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 4000);
+
       const res = await fetch(`${API_URL}/duplicates`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -502,7 +526,10 @@ export default function App() {
           candidate: payload,
           existing,
         }),
+        signal: controller.signal,
       });
+      clearTimeout(timer);
+
       const data = await res.json();
       setDuplicates(data.matches || []);
       return data.matches || [];
@@ -584,6 +611,8 @@ export default function App() {
 
   const sendEmail = async () => {
     setLoading(true);
+    const safetyTimer = setTimeout(() => setLoading(false), 12000);
+
     const payload = {
       problem,
       summary: aiData?.summary,
@@ -601,10 +630,15 @@ export default function App() {
       formData.append("longitude", coords?.lng || "");
       if (image) formData.append("image", image);
 
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 7000);
+
       const res = await fetch(`${API_URL}/send-email`, {
         method: "POST",
         body: formData,
+        signal: controller.signal,
       });
+      clearTimeout(timer);
 
       const data = await res.json();
       const emailSent = res.ok;
@@ -617,7 +651,6 @@ export default function App() {
       setAiData(null);
       setMailBody("");
 
-      setLoading(false);
       if (emailSent) {
         alert("✅ Grievance submitted and notification email sent successfully!");
       } else {
@@ -637,13 +670,14 @@ export default function App() {
         setAiData(null);
         setMailBody("");
 
-        setLoading(false);
-        alert("Grievance saved successfully to CivicFlow AI!");
+        alert("✅ Grievance saved successfully to CivicFlow AI!");
         setPage(3);
       } catch {
-        setLoading(false);
         alert("❌ Error submitting grievance");
       }
+    } finally {
+      clearTimeout(safetyTimer);
+      setLoading(false);
     }
   };
 
