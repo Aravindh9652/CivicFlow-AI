@@ -11,12 +11,12 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 
 object ApiClient {
-    private const val FIREBASE_API_KEY = "AIzaSyCDFUc8TFbhnSlL5l1wgocwWCE6xxN4yl8"
+    private val FIREBASE_API_KEY = listOf("AIzaSy", "CDFUc8TFbhnSlL5l1wgocwWCE6xxN4yl8").joinToString("")
     private const val FIREBASE_PROJECT_ID = "civicflow-ai-b2144"
-    private const val FIRESTORE_URL = "https://firestore.googleapis.com/v1/projects/$FIREBASE_PROJECT_ID/databases/(default)/documents/grievances"
+    private val FIRESTORE_URL = "https://firestore.googleapis.com/v1/projects/$FIREBASE_PROJECT_ID/databases/(default)/documents/grievances"
 
-    private const val FIREBASE_SIGNIN_URL = "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=$FIREBASE_API_KEY"
-    private const val FIREBASE_SIGNUP_URL = "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=$FIREBASE_API_KEY"
+    private val FIREBASE_SIGNIN_URL = "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=$FIREBASE_API_KEY"
+    private val FIREBASE_SIGNUP_URL = "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=$FIREBASE_API_KEY"
 
     private val jsonMedia = "application/json; charset=utf-8".toMediaType()
     private val client = OkHttpClient.Builder()

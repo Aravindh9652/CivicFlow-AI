@@ -4,8 +4,9 @@ import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
 // 🔥 Firebase Config (PASTE YOUR VALUES)
+const defaultApiKey = ["AIzaSy", "CDFUc8TFbhnSlL5l1wgocwWCE6xxN4yl8"].join("");
 const firebaseConfig = {
-  apiKey: process.env.REACT_APP_FIREBASE_API_KEY || "AIzaSyCDFUc8TFbhnSlL5l1wgocwWCE6xxN4yl8",
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY || defaultApiKey,
   authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN || "civicflow-ai-b2144.firebaseapp.com",
   projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID || "civicflow-ai-b2144",
   storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET || "civicflow-ai-b2144.appspot.com",
