@@ -17,5 +17,5 @@ jobs:
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_GEMINI_GREIVANCENET }}
-          projectId: gemini-greivancenet
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_CIVICFLOW_AI_B2144 || secrets.FIREBASE_SERVICE_ACCOUNT_GEMINI_GREIVANCENET }}
+          projectId: civicflow-ai-b2144
