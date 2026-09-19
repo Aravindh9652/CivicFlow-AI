@@ -41,26 +41,39 @@ FIREBASE_API_KEY = os.getenv("FIREBASE_API_KEY", "AIzaSyCDFUc8TFbhnSlL5l1wgocwWC
 
 # ---------------- EMAIL HELPER ----------------
 def send_email(to_email, subject, body, attachments=None):
-    msg = EmailMessage()
-    msg["From"] = f"CivicFlow AI Support <{SENDER_EMAIL}>" if SENDER_EMAIL else "CivicFlow AI Support"
-    msg["To"] = to_email
-    msg["Reply-To"] = SENDER_EMAIL
-    msg["Subject"] = subject
-    msg.set_content(body)
+    if not SENDER_EMAIL or not SENDER_PASSWORD:
+        print("Notice: SENDER_EMAIL or SENDER_PASSWORD not configured. Skipping SMTP email notification.")
+        return False
+    try:
+        msg = EmailMessage()
+        msg["From"] = f"CivicFlow AI Support <{SENDER_EMAIL}>"
+        msg["To"] = to_email
+        msg["Reply-To"] = SENDER_EMAIL
+        msg["Subject"] = subject
+        msg.set_content(body)
 
-    if attachments:
-        for file in attachments:
-            if file and file.filename:
-                msg.add_attachment(
-                    file.read(),
-                    maintype="application",
-                    subtype="octet-stream",
-                    filename=file.filename
-                )
+        if attachments:
+            for file in attachments:
+                if file and file.filename:
+                    try:
+                        file_data = file.read()
+                        if file_data:
+                            msg.add_attachment(
+                                file_data,
+                                maintype="application",
+                                subtype="octet-stream",
+                                filename=file.filename
+                            )
+                    except Exception as fe:
+                        print("Attachment read notice:", fe)
 
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-        server.login(SENDER_EMAIL, SENDER_PASSWORD)
-        server.send_message(msg)
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=10) as server:
+            server.login(SENDER_EMAIL, SENDER_PASSWORD)
+            server.send_message(msg)
+        return True
+    except Exception as err:
+        print("SMTP dispatch notice (grievance persisted):", err)
+        return False
 
 
 def _gemini_prompt(user_message: str, city: str) -> str:
@@ -486,14 +499,14 @@ Longitude: {longitude if longitude else "N/A"}
 -- Sent via CivicFlow AI (Gemini + local open-source first-pass)
 """
 
-        send_email(
+        ok = send_email(
             AUTHORITY_EMAIL,
             "New Civic Grievance",
             full_body,
             attachments
         )
 
-        return jsonify({"status": "Mail sent successfully"})
+        return jsonify({"status": "Mail sent successfully" if ok else "Mail notification bypassed", "sent": ok})
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500

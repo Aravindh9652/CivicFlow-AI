@@ -540,15 +540,17 @@ export default function App() {
   };
 
   const persistGrievance = async ({ emailSent }) => {
-    let photoUrl = "";
+    let photoUrl = imagePreview || "";
     if (image && storage) {
       try {
         const uid = user?.uid || "anonymous_user";
         const storageRef = ref(storage, `grievances/${uid}/${Date.now()}.jpg`);
-        await uploadBytes(storageRef, image);
-        photoUrl = await getDownloadURL(storageRef);
+        const uploadTask = uploadBytes(storageRef, image).then(() => getDownloadURL(storageRef));
+        const timeoutTask = new Promise((_, reject) => setTimeout(() => reject(new Error("Storage upload timeout")), 2500));
+        photoUrl = await Promise.race([uploadTask, timeoutTask]);
       } catch (err) {
-        console.warn("Storage upload skipped", err);
+        console.warn("Storage upload notice (using preview fallback):", err);
+        photoUrl = imagePreview || "";
       }
     }
 
