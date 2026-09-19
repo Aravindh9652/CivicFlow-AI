@@ -1,5 +1,5 @@
 export const API_URL =
-  process.env.REACT_APP_API_URL || "http://localhost:5000";
+  process.env.REACT_APP_API_URL || "https://civicflow-backend-hi63.onrender.com";
 
 export const ADMIN_EMAILS = (
   process.env.REACT_APP_ADMIN_EMAILS ||
