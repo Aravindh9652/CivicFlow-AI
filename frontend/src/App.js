@@ -804,10 +804,11 @@ export default function App() {
         <Starfield />
         <div className="auth-card">
           <div className="tabs" style={{ marginBottom: 20 }}>
-            <button className={`tab ${authMode === "login" ? "active" : ""}`} onClick={() => { setAuthMode("login"); setAuthError(""); }}>Citizen Login</button>
-            <button className={`tab ${authMode === "register" ? "active" : ""}`} onClick={() => { setAuthMode("register"); setAuthError(""); }}>Register</button>
-            <button className={`tab ${authMode === "admin" ? "active" : ""}`} onClick={() => { setAuthMode("admin"); setAuthError(""); }}>Authority Admin</button>
+            <button className={`tab ${authMode === "login" ? "active" : ""}`} onClick={() => { setAuthMode("login"); setEmail(""); setPassword(""); setName(""); setPhone(""); setAuthError(""); }}>Citizen Login</button>
+            <button className={`tab ${authMode === "register" ? "active" : ""}`} onClick={() => { setAuthMode("register"); setEmail(""); setPassword(""); setName(""); setPhone(""); setAuthError(""); }}>Register</button>
+            <button className={`tab ${authMode === "admin" ? "active" : ""}`} onClick={() => { setAuthMode("admin"); setEmail(""); setPassword(""); setName(""); setPhone(""); setAuthError(""); }}>Authority Admin</button>
           </div>
+
 
           {authMode === "login" && (
             <>

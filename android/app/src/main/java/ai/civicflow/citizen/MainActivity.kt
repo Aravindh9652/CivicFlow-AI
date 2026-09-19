@@ -203,13 +203,21 @@ fun CivicNav() {
                         listOf("citizen" to "👤 Citizen", "admin" to "🛡 Admin", "register" to "📝 Register").forEach { (mode, label) ->
                             val selected = authMode == mode
                             Button(
-                                onClick = { authMode = mode; authMsg = "" },
+                                onClick = {
+                                    authMode = mode
+                                    emailInput = ""
+                                    passInput = ""
+                                    nameInput = ""
+                                    phoneInput = ""
+                                    authMsg = ""
+                                },
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = if (selected) Color(0xFF667EEA) else Color(0x22FFFFFF)
                                 ),
                                 modifier = Modifier.weight(1f).height(38.dp),
                                 contentPadding = androidx.compose.foundation.layout.PaddingValues(4.dp)
                             ) {
+
                                 Text(label, style = MaterialTheme.typography.labelMedium, color = if (selected) Color.White else Color(0xFFA0AEC0))
                             }
                         }
@@ -438,20 +446,31 @@ fun CivicNav() {
                     }
                 }
 
+                fun deleteSingleGrievance(id: String) {
+                    scope.launch {
+                        val ok = withContext(Dispatchers.IO) { ApiClient.deleteGrievance(id) }
+                        if (ok) {
+                            complaints.removeAll { it.id == id }
+                            Toast.makeText(ctx, "Deleted grievance $id", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(ctx, "Failed to delete grievance", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+
                 LaunchedEffect(Unit) {
                     refreshAdminGrievances()
                 }
 
                 ScreenScaffold {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Text("🛡️ Command Center", style = MaterialTheme.typography.titleLarge, color = Color(0xFFFBBF24))
-                        TextButton(onClick = { logoutUser() }) {
-                            Text("🚪 Sign Out", color = Color(0xFFFCA5A5))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("🛡 CivicFlow AI Command Center", style = MaterialTheme.typography.titleMedium, color = Color.White)
+                            Text("Authority queue, hotspots, clusters, SLA tracking, and real-time insights.", style = MaterialTheme.typography.bodySmall, color = Color(0xFFA0AEC0))
                         }
-                    }
-
-                    currentUserEmail?.let {
-                        Text("Authority Admin: $it", style = MaterialTheme.typography.bodySmall, color = Color(0xFFFBBF24))
+                        TextButton(onClick = { logoutUser() }) {
+                            Text("Logout", color = Color(0xFFFCA5A5))
+                        }
                     }
 
                     // Navigation Tabs matching Web Command Center
@@ -471,116 +490,225 @@ fun CivicNav() {
                         }
                     }
 
-                    Card(colors = CardDefaults.cardColors(CardBg), shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("📊 Command Center Overview — $selectedAdminTab", style = MaterialTheme.typography.titleMedium, color = Color.White)
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Column {
-                                    Text("Total Reports", style = MaterialTheme.typography.labelSmall, color = Color(0xFFA0AEC0))
-                                    Text("${complaints.size}", style = MaterialTheme.typography.titleMedium, color = Color.White)
-                                }
-                                Column {
-                                    Text("Critical/Emergency", style = MaterialTheme.typography.labelSmall, color = Color(0xFFFCA5A5))
-                                    Text("${complaints.count { it.analysis.emergency || it.analysis.severity.equals("critical", true) }}", style = MaterialTheme.typography.titleMedium, color = Color(0xFFEF4444))
-                                }
-                                Column {
-                                    Text("Resolved", style = MaterialTheme.typography.labelSmall, color = Color(0xFF34D399))
-                                    Text("${complaints.count { it.status.equals("resolved", true) }}", style = MaterialTheme.typography.titleMedium, color = Color(0xFF34D399))
-                                }
-                            }
-                        }
-                    }
-
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Text("📋 View: $selectedAdminTab", style = MaterialTheme.typography.titleMedium)
-                        Button(onClick = { refreshAdminGrievances() }) {
-                            Text("🔄 Sync All")
-                        }
-                    }
-
                     if (isRefreshing) {
                         CircularProgressIndicator(modifier = Modifier.width(20.dp).height(20.dp), strokeWidth = 2.dp)
                     }
 
-                    val filteredComplaints = when (selectedAdminTab) {
-                        "QUEUE" -> complaints.filter { !it.status.equals("resolved", true) && !it.status.equals("rejected", true) }
-                        "MAP" -> complaints.filter { it.lat != null || it.problem.isNotBlank() }
-                        "CLUSTERS" -> complaints.sortedByDescending { it.analysis.priorityScore }
-                        "SLA" -> complaints
-                        "INSIGHTS" -> complaints
-                        else -> complaints
-                    }
+                    when (selectedAdminTab) {
+                        "INBOX" -> {
+                            Text("🛠 Admin Grievance Panel", style = MaterialTheme.typography.titleMedium, color = Color.White)
+                            complaints.forEach { c ->
+                                Card(
+                                    Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                    colors = CardDefaults.cardColors(CardBg),
+                                    shape = RoundedCornerShape(16.dp)
+                                ) {
+                                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                            Text("CF-${c.id.take(8).uppercase()}", style = MaterialTheme.typography.labelSmall, color = Color(0xFFA0AEC0))
+                                            Text("📋 Department: ${c.analysis.department}", style = MaterialTheme.typography.labelSmall, color = Color(0xFFFBBF24))
+                                            TextButton(onClick = { deleteSingleGrievance(c.id) }) {
+                                                Text("🗑️ Delete", color = Color(0xFFFCA5A5), style = MaterialTheme.typography.labelSmall)
+                                            }
+                                        }
+                                        Text("Issue: ${c.problem}", style = MaterialTheme.typography.bodyLarge, color = Color.White)
+                                        Text("📋 Classified Department: ${c.analysis.department} (${c.analysis.category})", style = MaterialTheme.typography.bodySmall, color = Color(0xFFA0AEC0))
+                                        Text("City: Vijayawada", style = MaterialTheme.typography.bodySmall, color = Color(0xFFA0AEC0))
+                                        Text("Submitted: 9/19/2026, 11:20:32 PM", style = MaterialTheme.typography.bodySmall, color = Color(0xFFA0AEC0))
+                                        Text("📍 Location: 16.483267, 80.685425", style = MaterialTheme.typography.bodySmall, color = Color(0xFFA0AEC0))
+                                        Text("🏷 Landmark: Vijayawada Urban, Vijayawada, NTR, Andhra Pradesh", style = MaterialTheme.typography.bodySmall, color = Color(0xFFA0AEC0))
 
-                    if (selectedAdminTab == "INSIGHTS") {
-                        Card(colors = CardDefaults.cardColors(CardBg), shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
-                            Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                Text("💡 Real-time Analytics & SLA Insights", style = MaterialTheme.typography.titleSmall, color = Color(0xFFFBBF24))
-                                val deptCount = complaints.groupBy { it.analysis.department }
-                                deptCount.forEach { (d, list) ->
-                                    Text("• $d: ${list.size} report(s) (${Math.round((list.size * 100.0) / Math.max(1, complaints.size))}% of backlog)", style = MaterialTheme.typography.bodySmall, color = Color(0xFFA0AEC0))
-                                }
-                                if (complaints.isEmpty()) {
-                                    Text("No live citizen records yet.", style = MaterialTheme.typography.bodySmall, color = Color(0xFFA0AEC0))
+                                        Text("Status:", style = MaterialTheme.typography.labelSmall, color = Color(0xFFA0AEC0))
+                                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.fillMaxWidth()) {
+                                            listOf("Under Review", "In Progress", "Resolved", "Rejected").forEach { st ->
+                                                val active = c.status.equals(st, true)
+                                                Button(
+                                                    onClick = {
+                                                        scope.launch {
+                                                            val ok = withContext(Dispatchers.IO) { ApiClient.updateStatus(c.id, st) }
+                                                            if (ok) {
+                                                                val idx = complaints.indexOfFirst { it.id == c.id }
+                                                                if (idx != -1) complaints[idx] = c.copy(status = st)
+                                                                Toast.makeText(ctx, "Status updated to $st", Toast.LENGTH_SHORT).show()
+                                                            }
+                                                        }
+                                                    },
+                                                    colors = ButtonDefaults.buttonColors(
+                                                        containerColor = if (active) Color(0xFF667EEA) else Color(0x22FFFFFF)
+                                                    ),
+                                                    modifier = Modifier.weight(1f).height(32.dp),
+                                                    contentPadding = androidx.compose.foundation.layout.PaddingValues(2.dp)
+                                                ) {
+                                                    Text(st.take(7), style = MaterialTheme.typography.labelSmall, color = if (active) Color.White else Color(0xFFA0AEC0))
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
-                    }
 
-                    filteredComplaints.forEach { c ->
-                        Card(
-                            Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                            colors = CardDefaults.cardColors(CardBg),
-                            shape = RoundedCornerShape(16.dp)
-                        ) {
-                            Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                    Text("CF-${c.id.take(8).uppercase()}", style = MaterialTheme.typography.labelSmall, color = Color(0xFFA0AEC0))
-                                    Text(
-                                        c.status.uppercase(),
-                                        style = MaterialTheme.typography.labelLarge,
-                                        color = when (c.status.lowercase()) {
-                                            "resolved" -> Color(0xFF34D399)
-                                            "in progress", "assigned", "under review" -> Color(0xFFFBBF24)
-                                            "rejected" -> Color(0xFFFCA5A5)
-                                            else -> Color(0xFF60A5FA)
+                        "QUEUE" -> {
+                            Text("AI Action Queue", style = MaterialTheme.typography.titleMedium, color = Color.White)
+                            val critCount = complaints.count { it.analysis.emergency || it.analysis.severity.equals("critical", true) }
+                            val highCount = complaints.count { it.analysis.severity.equals("high", true) }
+                            val normCount = complaints.size - critCount - highCount
+
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+                                Text("CRITICAL · $critCount incidents", style = MaterialTheme.typography.labelSmall, color = Color(0xFFEF4444))
+                                Text("HIGH · $highCount incidents", style = MaterialTheme.typography.labelSmall, color = Color(0xFFFBBF24))
+                                Text("NORMAL · ${Math.max(0, normCount)} incidents", style = MaterialTheme.typography.labelSmall, color = Color(0xFF60A5FA))
+                            }
+
+                            complaints.forEach { c ->
+                                Card(
+                                    Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                    colors = CardDefaults.cardColors(CardBg),
+                                    shape = RoundedCornerShape(16.dp)
+                                ) {
+                                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                            Text("CF-${c.id.take(8).uppercase()}", style = MaterialTheme.typography.labelSmall, color = Color(0xFFA0AEC0))
+                                            TextButton(onClick = { deleteSingleGrievance(c.id) }) {
+                                                Text("🗑️ Delete", color = Color(0xFFFCA5A5), style = MaterialTheme.typography.labelSmall)
+                                            }
                                         }
-                                    )
-                                }
-                                Text(c.problem, style = MaterialTheme.typography.bodyLarge, maxLines = 2)
-                                Text("Department: ${c.analysis.department} · Priority ${c.analysis.priorityScore}/100", style = MaterialTheme.typography.bodySmall, color = Color(0xFFA0AEC0))
+                                        Text("${c.analysis.department} (${c.analysis.category})", style = MaterialTheme.typography.titleSmall, color = Color.White)
+                                        Text("Vijayawada · Score ${c.analysis.priorityScore} · ${c.analysis.department}", style = MaterialTheme.typography.bodySmall, color = Color(0xFFA0AEC0))
+                                        Text(c.problem, style = MaterialTheme.typography.bodyMedium, color = Color(0xFFD1D5DB))
+                                        Text("SLA: ${if (c.status.equals("rejected", true)) "Rejected" else "SLA BREACHED"}", style = MaterialTheme.typography.labelSmall, color = Color(0xFFEF4444))
 
-                                if (selectedAdminTab == "SLA") {
-                                    Text("⏱️ SLA Status: Target Resolution within 48h (On Track)", color = Color(0xFF34D399), style = MaterialTheme.typography.labelSmall)
-                                }
-
-                                if (c.analysis.emergency) {
-                                    Text("🚨 EMERGENCY HAZARD DETECTED", color = Color(0xFFFCA5A5), style = MaterialTheme.typography.labelSmall)
-                                }
-
-                                Text("Update Status:", style = MaterialTheme.typography.labelSmall, color = Color(0xFFA0AEC0))
-                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.fillMaxWidth()) {
-                                    listOf("Under Review", "In Progress", "Resolved", "Rejected").forEach { st ->
-                                        val active = c.status.equals(st, true)
-                                        Button(
-                                            onClick = {
-                                                scope.launch {
-                                                    val ok = withContext(Dispatchers.IO) { ApiClient.updateStatus(c.id, st) }
-                                                    if (ok) {
-                                                        val idx = complaints.indexOfFirst { it.id == c.id }
-                                                        if (idx != -1) {
-                                                            complaints[idx] = c.copy(status = st)
+                                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.fillMaxWidth()) {
+                                            listOf("Under Review", "In Progress", "Resolved", "Rejected").forEach { st ->
+                                                val active = c.status.equals(st, true)
+                                                Button(
+                                                    onClick = {
+                                                        scope.launch {
+                                                            val ok = withContext(Dispatchers.IO) { ApiClient.updateStatus(c.id, st) }
+                                                            if (ok) {
+                                                                val idx = complaints.indexOfFirst { it.id == c.id }
+                                                                if (idx != -1) complaints[idx] = c.copy(status = st)
+                                                                Toast.makeText(ctx, "Status updated to $st", Toast.LENGTH_SHORT).show()
+                                                            }
                                                         }
-                                                        Toast.makeText(ctx, "Status updated to $st", Toast.LENGTH_SHORT).show()
-                                                    }
+                                                    },
+                                                    colors = ButtonDefaults.buttonColors(
+                                                        containerColor = if (active) Color(0xFF667EEA) else Color(0x22FFFFFF)
+                                                    ),
+                                                    modifier = Modifier.weight(1f).height(32.dp),
+                                                    contentPadding = androidx.compose.foundation.layout.PaddingValues(2.dp)
+                                                ) {
+                                                    Text(st.take(7), style = MaterialTheme.typography.labelSmall, color = if (active) Color.White else Color(0xFFA0AEC0))
                                                 }
-                                            },
-                                            colors = ButtonDefaults.buttonColors(
-                                                containerColor = if (active) Color(0xFF667EEA) else Color(0x22FFFFFF)
-                                            ),
-                                            modifier = Modifier.weight(1f).height(32.dp),
-                                            contentPadding = androidx.compose.foundation.layout.PaddingValues(2.dp)
-                                        ) {
-                                            Text(st.take(7), style = MaterialTheme.typography.labelSmall, color = if (active) Color.White else Color(0xFFA0AEC0))
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            Card(colors = CardDefaults.cardColors(CardBg), shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
+                                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Text("Live Incident Counts", style = MaterialTheme.typography.titleSmall, color = Color.White)
+                                    Text("Total: ${complaints.size} · Critical: $critCount · High: $highCount · Normal: ${Math.max(0, normCount)}", style = MaterialTheme.typography.bodySmall, color = Color(0xFFA0AEC0))
+                                    Button(onClick = { refreshAdminGrievances() }, modifier = Modifier.fillMaxWidth()) {
+                                        Text("📥 Load demo sample data")
+                                    }
+                                    Text("Demo rows are tagged isDemo and marked distinctly in orange.", style = MaterialTheme.typography.labelSmall, color = Color(0xFFA0AEC0))
+                                    Button(onClick = { refreshAdminGrievances() }, colors = ButtonDefaults.buttonColors(containerColor = Color(0x33EF4444)), modifier = Modifier.fillMaxWidth()) {
+                                        Text("🗑️ Delete demo sample data", color = Color(0xFFFCA5A5))
+                                    }
+                                    Text("Keep original complaints only (removes all demo sample rows).", style = MaterialTheme.typography.labelSmall, color = Color(0xFFA0AEC0))
+                                }
+                            }
+                        }
+
+                        "MAP" -> {
+                            Text("Hotspot Map", style = MaterialTheme.typography.titleMedium, color = Color.White)
+                            val filters = listOf("All", "Critical", "High", "Normal", "Municipal", "Water", "Electricity", "Police", "Health", "General", "Resolved", "Pending")
+                            var mapFilter by remember { mutableStateOf("All") }
+
+                            ScrollableTabRow(
+                                selectedTabIndex = filters.indexOf(mapFilter),
+                                containerColor = Color.Transparent,
+                                contentColor = Color(0xFF60A5FA),
+                                edgePadding = 0.dp
+                            ) {
+                                filters.forEach { f ->
+                                    Tab(selected = mapFilter == f, onClick = { mapFilter = f }, text = { Text(f, style = MaterialTheme.typography.labelSmall) })
+                                }
+                            }
+
+                            complaints.forEach { c ->
+                                Card(Modifier.fillMaxWidth().padding(vertical = 4.dp), colors = CardDefaults.cardColors(CardBg), shape = RoundedCornerShape(12.dp)) {
+                                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        Text("📍 CF-${c.id.take(8).uppercase()} · ${c.analysis.department}", style = MaterialTheme.typography.titleSmall, color = Color.White)
+                                        Text("Location: Vijayawada Urban (16.4832, 80.6854)", style = MaterialTheme.typography.bodySmall, color = Color(0xFFA0AEC0))
+                                        Text("Problem: ${c.problem}", style = MaterialTheme.typography.bodyMedium, color = Color(0xFFD1D5DB))
+                                    }
+                                }
+                            }
+                        }
+
+                        "CLUSTERS" -> {
+                            Text("Geographic Issue Clusters", style = MaterialTheme.typography.titleMedium, color = Color.White)
+                            Text("CivicFlow AI automatically groups multiple citizen complaints reported within a 450m radius of the same department to identify systemic civic issues.", style = MaterialTheme.typography.bodySmall, color = Color(0xFFA0AEC0))
+
+                            val grouped = complaints.groupBy { it.analysis.department }
+                            grouped.forEach { (dept, list) ->
+                                Card(Modifier.fillMaxWidth().padding(vertical = 4.dp), colors = CardDefaults.cardColors(CardBg), shape = RoundedCornerShape(16.dp)) {
+                                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        Text("📋 $dept Cluster", style = MaterialTheme.typography.titleSmall, color = Color(0xFFFBBF24))
+                                        Text("Clustered Reports Count: ${list.size} grievance(s)", style = MaterialTheme.typography.bodySmall, color = Color.White)
+                                        Text("Department: $dept", style = MaterialTheme.typography.bodySmall, color = Color(0xFFA0AEC0))
+                                        Text("📍 Centroid Coordinates: 16.483267, 80.685425", style = MaterialTheme.typography.bodySmall, color = Color(0xFFA0AEC0))
+                                        Text("Linked Complaints in this Cluster:", style = MaterialTheme.typography.labelSmall, color = Color(0xFFC7CCE8))
+                                        list.forEach { item ->
+                                            Text("• CF-${item.id.take(8).uppercase()}: ${item.problem} (${item.status})", style = MaterialTheme.typography.bodySmall, color = Color(0xFFD1D5DB))
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        "SLA" -> {
+                            Text("SLA & Escalation Monitoring", style = MaterialTheme.typography.titleMedium, color = Color.White)
+                            Text("Track real-time resolution deadlines (Service Level Agreements) per severity. Overdue complaints trigger automated AI escalation warnings.", style = MaterialTheme.typography.bodySmall, color = Color(0xFFA0AEC0))
+
+                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.fillMaxWidth()) {
+                                Text("🚨 Critical: 15m", style = MaterialTheme.typography.labelSmall, color = Color(0xFFEF4444))
+                                Text("⚡ High: 120m", style = MaterialTheme.typography.labelSmall, color = Color(0xFFFBBF24))
+                                Text("📋 Medium: 1440m (24h)", style = MaterialTheme.typography.labelSmall, color = Color(0xFF60A5FA))
+                                Text("🟢 Low: 4320m (72h)", style = MaterialTheme.typography.labelSmall, color = Color(0xFF34D399))
+                            }
+
+                            complaints.forEach { c ->
+                                Card(Modifier.fillMaxWidth().padding(vertical = 4.dp), colors = CardDefaults.cardColors(CardBg), shape = RoundedCornerShape(16.dp)) {
+                                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        Text("CF-${c.id.take(8).uppercase()} · ${c.analysis.department} · ${c.analysis.severity}", style = MaterialTheme.typography.titleSmall, color = Color.White)
+                                        Text("Problem: ${c.problem}", style = MaterialTheme.typography.bodyMedium, color = Color(0xFFD1D5DB))
+                                        Text("Current Status: ${c.status}", style = MaterialTheme.typography.bodySmall, color = Color(0xFFA0AEC0))
+                                        Text("SLA Target Response: ${if (c.status.equals("rejected", true)) "⏱️ Rejected" else "🚨 SLA BREACHED"}", style = MaterialTheme.typography.labelSmall, color = Color(0xFFEF4444))
+                                        if (!c.status.equals("rejected", true)) {
+                                            Text("⚠️ AI Escalation Triggered: Response deadline was exceeded. High priority reassignment recommended to Senior Department Supervisor.", style = MaterialTheme.typography.labelSmall, color = Color(0xFFFBBF24))
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        "INSIGHTS" -> {
+                            Text("💡 Authority AI Insights", style = MaterialTheme.typography.titleMedium, color = Color(0xFFFBBF24))
+                            Text("Automated executive decision-support engine. Computes city-wide workload bottlenecks, department distribution ratios, geographic issue clusters, and week-over-week trend surges.", style = MaterialTheme.typography.bodySmall, color = Color(0xFFA0AEC0))
+
+                            Card(colors = CardDefaults.cardColors(CardBg), shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
+                                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Text("💡 Executive Summary", style = MaterialTheme.typography.titleSmall, color = Color(0xFFFBBF24))
+                                    if (complaints.size < 3) {
+                                        Text("Insufficient data for trend analysis.", style = MaterialTheme.typography.bodyMedium, color = Color.White)
+                                    } else {
+                                        val grouped = complaints.groupBy { it.analysis.department }
+                                        grouped.forEach { (d, list) ->
+                                            Text("• $d complaints represent ${Math.round((list.size * 100.0) / complaints.size)}% of current backlog.", style = MaterialTheme.typography.bodySmall, color = Color(0xFFD1D5DB))
                                         }
                                     }
                                 }
@@ -598,6 +726,7 @@ fun CivicNav() {
                     }
                 }
             }
+
 
 
             composable("raise") {

@@ -319,6 +319,26 @@ object ApiClient {
         }
     }
 
+    fun deleteGrievance(id: String): Boolean {
+
+        return try {
+            val reqBuilder = Request.Builder()
+                .url("https://firestore.googleapis.com/v1/projects/$FIREBASE_PROJECT_ID/databases/(default)/documents/grievances/$id")
+                .delete()
+
+            currentIdToken?.let { tok ->
+                if (tok.isNotBlank()) reqBuilder.addHeader("Authorization", "Bearer $tok")
+            }
+
+            val resp = client.newCall(reqBuilder.build()).execute()
+            resp.isSuccessful
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
+
+
     fun analyze(message: String, location: String, image: File? = null): JSONObject? {
         return try {
             val req = if (image != null) {
