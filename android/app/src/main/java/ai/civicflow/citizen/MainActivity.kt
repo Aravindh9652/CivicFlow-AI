@@ -122,6 +122,12 @@ fun CivicNav() {
     var currentUserEmail by remember { mutableStateOf(prefs.getString("user_email", null)) }
     var isAdminUser by remember { mutableStateOf(prefs.getBoolean("is_admin", false)) }
 
+    LaunchedEffect(Unit) {
+        ApiClient.currentEmail = prefs.getString("user_email", null)
+        ApiClient.currentIdToken = prefs.getString("user_id_token", null)
+        ApiClient.currentUid = prefs.getString("user_uid", null)
+    }
+
     fun resetForm() {
         problem = ""
         city = ""
@@ -134,6 +140,9 @@ fun CivicNav() {
     }
 
     fun logoutUser() {
+        ApiClient.currentEmail = null
+        ApiClient.currentIdToken = null
+        ApiClient.currentUid = null
         prefs.edit().clear().apply()
         currentUserEmail = null
         isAdminUser = false
@@ -143,6 +152,7 @@ fun CivicNav() {
             popUpTo(0) { inclusive = true }
         }
     }
+
 
     val startDest = if (!currentUserEmail.isNullOrBlank()) (if (isAdminUser) "admin_home" else "home") else "splash"
 
@@ -276,7 +286,13 @@ fun CivicNav() {
                                 if (ok) {
                                     currentUserEmail = result
                                     isAdminUser = (authMode == "admin") || ApiClient.ADMIN_EMAILS.contains(result.lowercase())
-                                    prefs.edit().putString("user_email", result).putBoolean("is_admin", isAdminUser).apply()
+                                    prefs.edit()
+                                        .putString("user_email", result)
+                                        .putString("user_id_token", ApiClient.currentIdToken)
+                                        .putString("user_uid", ApiClient.currentUid)
+                                        .putBoolean("is_admin", isAdminUser)
+                                        .apply()
+
                                     Toast.makeText(ctx, if (isAdminUser) "Logged in as Authority Admin: $result" else "Logged in as $result", Toast.LENGTH_SHORT).show()
                                     nav.navigate(if (isAdminUser) "admin_home" else "home")
                                 } else {
@@ -383,9 +399,10 @@ fun CivicNav() {
                     scope.launch {
                         val remoteList = withContext(Dispatchers.IO) { ApiClient.fetchFromFirestore(null) }
                         isRefreshing = false
+                        complaints.clear()
                         if (remoteList.isNotEmpty()) {
-                            complaints.clear()
                             remoteList.forEach { json ->
+
                                 val id = json.optString("id", UUID.randomUUID().toString())
                                 val prb = json.optString("problem", "Civic grievance")
                                 val dept = json.optString("department", "General")
@@ -924,9 +941,10 @@ fun CivicNav() {
                         val filterMail = if (isAdminUser) null else currentUserEmail
                         val remoteList = withContext(Dispatchers.IO) { ApiClient.fetchFromFirestore(filterMail) }
                         isRefreshing = false
+                        complaints.clear()
                         if (remoteList.isNotEmpty()) {
-                            complaints.clear()
                             remoteList.forEach { json ->
+
                                 val id = json.optString("id", UUID.randomUUID().toString())
                                 val prb = json.optString("problem", "Civic grievance")
                                 val dept = json.optString("department", "General")

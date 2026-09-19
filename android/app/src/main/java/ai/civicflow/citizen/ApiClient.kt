@@ -31,6 +31,10 @@ object ApiClient {
         "siva@gmail.com"
     )
 
+    var currentIdToken: String? = null
+    var currentUid: String? = null
+    var currentEmail: String? = null
+
     fun firebaseLogin(email: String, pass: String): Pair<Boolean, String> {
         return try {
             val payload = JSONObject().put("email", email).put("password", pass).put("returnSecureToken", true).toString().toRequestBody(jsonMedia)
@@ -40,8 +44,12 @@ object ApiClient {
             val json = JSONObject(text)
             if (resp.isSuccessful && json.has("idToken")) {
                 val uid = json.optString("localId", "")
-                val idToken = json.optString("email", email)
+                val tok = json.optString("idToken", "")
                 val loggedEmail = json.optString("email", email).trim().lowercase()
+
+                currentIdToken = tok
+                currentUid = uid
+                currentEmail = loggedEmail
 
                 // Ensure user profile document exists in Firestore users/{uid}
                 if (uid.isNotBlank()) {
@@ -55,7 +63,6 @@ object ApiClient {
                             .url("https://firestore.googleapis.com/v1/projects/$FIREBASE_PROJECT_ID/databases/(default)/documents/users/$uid")
                             .patch(docBody)
                         
-                        val tok = json.optString("idToken", "")
                         if (tok.isNotBlank()) {
                             userReqBuilder.addHeader("Authorization", "Bearer $tok")
                         }
@@ -96,8 +103,12 @@ object ApiClient {
             val json = JSONObject(text)
             if (resp.isSuccessful && json.has("idToken")) {
                 val uid = json.optString("localId", "")
-                val idToken = json.optString("idToken", "")
+                val tok = json.optString("idToken", "")
                 val registeredEmail = json.optString("email", email).trim().lowercase()
+
+                currentIdToken = tok
+                currentUid = uid
+                currentEmail = registeredEmail
 
                 if (uid.isNotBlank()) {
                     try {
@@ -112,8 +123,8 @@ object ApiClient {
                             .url("https://firestore.googleapis.com/v1/projects/$FIREBASE_PROJECT_ID/databases/(default)/documents/users/$uid")
                             .patch(docBody)
 
-                        if (idToken.isNotBlank()) {
-                            userReqBuilder.addHeader("Authorization", "Bearer $idToken")
+                        if (tok.isNotBlank()) {
+                            userReqBuilder.addHeader("Authorization", "Bearer $tok")
                         }
 
                         client.newCall(userReqBuilder.build()).execute()
@@ -167,6 +178,9 @@ object ApiClient {
 
     fun saveToFirestore(item: JSONObject): String? {
         return try {
+            val mail = item.optString("citizenEmail", currentEmail ?: "").trim().lowercase()
+            val uid = currentUid ?: ""
+
             val fields = JSONObject()
                 .put("problem", JSONObject().put("stringValue", item.optString("problem", "")))
                 .put("city", JSONObject().put("stringValue", item.optString("city", "")))
@@ -182,12 +196,18 @@ object ApiClient {
                 .put("emergencyReason", JSONObject().put("stringValue", item.optString("emergencyReason", "")))
                 .put("detailedLocation", JSONObject().put("stringValue", item.optString("landmark", "")))
                 .put("createdAtMillis", JSONObject().put("integerValue", System.currentTimeMillis()))
+                .put("isDemo", JSONObject().put("booleanValue", false))
 
-            val mail = item.optString("citizenEmail", "").trim().lowercase()
+            if (uid.isNotBlank()) {
+                fields.put("userId", JSONObject().put("stringValue", uid))
+                fields.put("citizenId", JSONObject().put("stringValue", uid))
+            }
+
             if (mail.isNotBlank()) {
                 fields.put("citizenEmail", JSONObject().put("stringValue", mail))
                 fields.put("userEmail", JSONObject().put("stringValue", mail))
                 fields.put("email", JSONObject().put("stringValue", mail))
+                fields.put("citizenName", JSONObject().put("stringValue", mail.substringBefore("@")))
             }
 
             if (item.has("lat") && !item.isNull("lat")) {
@@ -198,8 +218,12 @@ object ApiClient {
             }
 
             val docBody = JSONObject().put("fields", fields).toString().toRequestBody(jsonMedia)
-            val req = Request.Builder().url(FIRESTORE_URL).post(docBody).build()
-            val resp = client.newCall(req).execute()
+            val reqBuilder = Request.Builder().url(FIRESTORE_URL).post(docBody)
+            currentIdToken?.let { tok ->
+                if (tok.isNotBlank()) reqBuilder.addHeader("Authorization", "Bearer $tok")
+            }
+
+            val resp = client.newCall(reqBuilder.build()).execute()
             val text = resp.body?.string() ?: ""
             val json = JSONObject(text)
             val name = json.optString("name", "")
@@ -213,8 +237,12 @@ object ApiClient {
     fun fetchFromFirestore(userEmail: String? = null): List<JSONObject> {
         val list = mutableListOf<JSONObject>()
         try {
-            val req = Request.Builder().url(FIRESTORE_URL).get().build()
-            val resp = client.newCall(req).execute()
+            val reqBuilder = Request.Builder().url(FIRESTORE_URL).get()
+            currentIdToken?.let { tok ->
+                if (tok.isNotBlank()) reqBuilder.addHeader("Authorization", "Bearer $tok")
+            }
+
+            val resp = client.newCall(reqBuilder.build()).execute()
             val text = resp.body?.string() ?: return list
             val json = JSONObject(text)
             val docs = json.optJSONArray("documents") ?: return list
@@ -232,8 +260,14 @@ object ApiClient {
                     ?: fields.optJSONObject("userEmail")?.optString("stringValue")
                     ?: "").trim().lowercase()
 
+                val userIdVal = (fields.optJSONObject("userId")?.optString("stringValue")
+                    ?: fields.optJSONObject("citizenId")?.optString("stringValue")
+                    ?: "").trim()
+
                 if (mailFilter.isNotBlank()) {
-                    if (citizenEmail.isNotBlank() && citizenEmail != mailFilter) {
+                    val matchEmail = citizenEmail.isNotBlank() && citizenEmail == mailFilter
+                    val matchUid = currentUid?.isNotBlank() == true && userIdVal == currentUid
+                    if ((citizenEmail.isNotBlank() || userIdVal.isNotBlank()) && !matchEmail && !matchUid) {
                         continue // Skip grievances belonging to another user
                     }
                 }
@@ -271,11 +305,15 @@ object ApiClient {
             val fields = JSONObject().put("status", JSONObject().put("stringValue", newStatus))
             val payload = JSONObject().put("fields", fields).toString().toRequestBody(jsonMedia)
 
-            val req = Request.Builder()
+            val reqBuilder = Request.Builder()
                 .url("https://firestore.googleapis.com/v1/projects/$FIREBASE_PROJECT_ID/databases/(default)/documents/grievances/$id?updateMask.fieldPaths=status")
                 .patch(payload)
-                .build()
-            val resp = client.newCall(req).execute()
+
+            currentIdToken?.let { tok ->
+                if (tok.isNotBlank()) reqBuilder.addHeader("Authorization", "Bearer $tok")
+            }
+
+            val resp = client.newCall(reqBuilder.build()).execute()
             resp.isSuccessful
         } catch (e: Exception) {
             e.printStackTrace()
