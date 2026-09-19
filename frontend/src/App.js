@@ -565,11 +565,13 @@ function getDeviceId() {
       }
     }
 
+    const effectiveAi = aiData || classifyLocal(problem, city);
+
     const devId = getDeviceId();
     const uid = user?.uid || devId;
     const uemail = user?.email || email || "";
     const uname = name || user?.displayName || (uemail ? uemail.split("@")[0] : "Citizen");
-    const slaMins = slaMinutes[aiData?.severity] || SLA_DEFAULT.Medium;
+    const slaMins = (slaMinutes && slaMinutes[effectiveAi?.severity]) || SLA_DEFAULT[effectiveAi?.severity] || SLA_DEFAULT.Medium;
     const nowMs = Date.now();
 
     const docData = {
@@ -585,18 +587,18 @@ function getDeviceId() {
       latitude: coords?.lat ?? null,
       longitude: coords?.lng ?? null,
 
-      department: aiData?.department ?? "General",
-      category: aiData?.category ?? "Uncategorized",
-      summary: aiData?.summary ?? problem,
+      department: effectiveAi?.department ?? "General",
+      category: effectiveAi?.category ?? "Uncategorized",
+      summary: effectiveAi?.summary ?? problem ?? "Civic issue",
 
-      severity: aiData?.severity ?? "Medium",
-      priorityScore: aiData?.priorityScore ?? 50,
-      priorityReason: aiData?.priorityReason ?? "",
-      routingReason: aiData?.routingReason ?? "",
-      confidence: aiData?.confidence ?? 0,
+      severity: effectiveAi?.severity ?? "Medium",
+      priorityScore: effectiveAi?.priorityScore ?? 50,
+      priorityReason: effectiveAi?.priorityReason ?? "",
+      routingReason: effectiveAi?.routingReason ?? "",
+      confidence: effectiveAi?.confidence ?? 0,
 
-      emergency: aiData?.emergency ?? false,
-      emergencyReason: aiData?.emergencyReason ?? "",
+      emergency: effectiveAi?.emergency ?? false,
+      emergencyReason: effectiveAi?.emergencyReason ?? "",
 
       photoUrl: photoUrl || "",
       imageUrl: photoUrl || "",
@@ -613,9 +615,9 @@ function getDeviceId() {
       createdAt: serverTimestamp(),
       createdAtMillis: nowMs,
       updatedAt: serverTimestamp(),
-      aiUsed: aiData?.aiUsed ?? false,
-      aiLayer: aiData?.aiLayer || "local-open-source",
-      mailBody: mailBody || "",
+      aiUsed: effectiveAi?.aiUsed ?? false,
+      aiLayer: effectiveAi?.aiLayer || "local-open-source",
+      mailBody: mailBody || effectiveAi?.draftedMail || "",
       emailSent: !!emailSent,
       isDemo: false,
     };
@@ -692,6 +694,7 @@ function getDeviceId() {
       setAiData(null);
       setMailBody("");
 
+      setLoading(false);
       if (emailSent) {
         alert("✅ Grievance submitted and notification email sent successfully!");
       } else {
@@ -700,6 +703,7 @@ function getDeviceId() {
       setPage(3);
     } catch (err) {
       console.error("Submission error notice:", err);
+      setLoading(false);
       alert("✅ Grievance processed and saved to CivicFlow AI!");
       setPage(3);
     } finally {
