@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "civicflow-ai-b2144",
     "public": "frontend/build",
     "ignore": [
       "firebase.json",
