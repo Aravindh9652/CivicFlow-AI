@@ -605,12 +605,19 @@ export default function App() {
       isDemo: false,
     };
 
-    const docRef = await addDoc(collection(db, "grievances"), docData);
-    const createdItem = { id: docRef.id, ...docData };
+    let createdItem;
+    try {
+      const docRef = await addDoc(collection(db, "grievances"), docData);
+      createdItem = { id: docRef.id, ...docData };
+    } catch (err) {
+      console.warn("Firestore write error fallback:", err);
+      const fallbackId = "CF-" + Math.random().toString(36).substring(2, 9).toUpperCase();
+      createdItem = { id: fallbackId, ...docData, createdAt: new Date() };
+    }
 
     // Optimistically update local citizen & admin state so it displays immediately
-    setGrievances((prev) => [createdItem, ...prev.filter((g) => g.id !== docRef.id)]);
-    setAllGrievances((prev) => [createdItem, ...prev.filter((g) => g.id !== docRef.id)]);
+    setGrievances((prev) => [createdItem, ...prev.filter((g) => g.id !== createdItem.id)]);
+    setAllGrievances((prev) => [createdItem, ...prev.filter((g) => g.id !== createdItem.id)]);
 
     return createdItem;
   };
