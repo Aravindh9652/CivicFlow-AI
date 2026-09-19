@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Background Base -->
+    <path
+        android:fillColor="#0A0E27"
+        android:pathData="M0,0h108v108h-108z" />
+
+    <!-- Outer Shield Frame (Indigo) -->
+    <path
+        android:fillColor="#667EEA"
+        android:pathData="M54,14 C34,14 22,24 22,24 C22,54 36,80 54,94 C72,80 86,54 86,24 C86,24 74,14 54,14 Z" />
+
+    <!-- Inner Shield Emblem (Gold) -->
+    <path
+        android:fillColor="#FBBF24"
+        android:pathData="M54,26 C42,26 34,32 34,32 C34,52 44,70 54,80 C64,70 74,52 74,32 C74,32 66,26 54,26 Z" />
+
+    <!-- AI Core Star -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,38 L57.5,48.5 L68,52 L57.5,55.5 L54,66 L50.5,55.5 L40,52 L50.5,48.5 Z" />
+</vector>

@@ -430,55 +430,22 @@ def request_password_reset():
     if not email or "@" not in email:
         return jsonify({"error": "Valid email required"}), 400
 
-    # 1. Trigger Firebase Identity Toolkit REST API to dispatch official password reset link email
-    fb_sent = False
-    fb_error = None
+    # Trigger Firebase Identity Toolkit REST API to dispatch single official password reset link email
     try:
         fb_url = f"https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key={FIREBASE_API_KEY}"
         fb_payload = {"requestType": "PASSWORD_RESET", "email": email}
         fb_resp = requests.post(fb_url, json=fb_payload, timeout=10)
         if fb_resp.status_code == 200:
-            fb_sent = True
+            return jsonify({"status": "Password reset link sent to your email! Check your inbox and Spam folder."})
         else:
             err_obj = fb_resp.json().get("error", {})
-            fb_error = err_obj.get("message", "Firebase user not found or reset failed")
-    except Exception as e:
-        fb_error = str(e)
-
-    # 2. Prepare user notification email with direct reset portal link
-    subject = "🔑 Reset Your CivicFlow AI Password"
-    body = f"""
-Hello,
-
-We received a password reset request for your CivicFlow AI citizen account ({email}).
-
-🔑 PASSWORD RESET INSTRUCTIONS:
-1. An official Firebase Password Reset Link has been dispatched to {email}.
-2. Check your inbox and Spam/Junk folder for an email from 'noreply@civicflow-ai-b2144.firebaseapp.com' or 'CivicFlow AI'.
-3. Click the password reset link in that email to enter your new password.
-
-Direct Password Action Portal:
-https://civicflow-ai-b2144.firebaseapp.com/__/auth/action
-
-If you did not request a password reset, you can safely ignore this email. Your CivicFlow AI account remains secure.
-
-Best regards,
-CivicFlow AI Support Team
-"""
-    try:
-        if SENDER_EMAIL and SENDER_PASSWORD:
-            send_email(email, subject, body)
-            return jsonify({
-                "status": "Password reset link dispatched! Please check your email inbox and Spam folder.",
-                "firebase_sent": fb_sent
-            })
-        if fb_sent:
-            return jsonify({
-                "status": "Password reset link dispatched via Firebase! Check your email inbox and Spam folder."
-            })
-        return jsonify({"error": fb_error or "Failed to send password reset email"}), 400
+            msg = err_obj.get("message", "User not found")
+            if "EMAIL_NOT_FOUND" in msg:
+                return jsonify({"error": "No registered account found with this email address."}), 404
+            return jsonify({"error": f"Failed to send password reset: {msg}"}), 400
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 
 

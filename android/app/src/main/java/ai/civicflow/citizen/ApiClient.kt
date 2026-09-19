@@ -148,32 +148,30 @@ object ApiClient {
     }
 
     fun requestPasswordReset(email: String): Pair<Boolean, String> {
+        val cleanEmail = email.trim().lowercase()
         return try {
-            // 1. Direct call to Firebase REST API sendOobCode
-            try {
-                val fbUrl = "https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=$FIREBASE_API_KEY"
-                val fbPayload = JSONObject().put("requestType", "PASSWORD_RESET").put("email", email).toString().toRequestBody(jsonMedia)
-                val fbReq = Request.Builder().url(fbUrl).post(fbPayload).build()
-                client.newCall(fbReq).execute()
-            } catch (ignored: Exception) {}
-
-            // 2. Call backend for SMTP notification dispatch
-            val payload = JSONObject().put("email", email).toString().toRequestBody(jsonMedia)
-            val req = Request.Builder().url("${BuildConfig.API_URL}/request-password-reset").post(payload).build()
-            val resp = client.newCall(req).execute()
+            val fbUrl = "https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=$FIREBASE_API_KEY"
+            val fbPayload = JSONObject().put("requestType", "PASSWORD_RESET").put("email", cleanEmail).toString().toRequestBody(jsonMedia)
+            val fbReq = Request.Builder().url(fbUrl).post(fbPayload).build()
+            val resp = client.newCall(fbReq).execute()
             val text = resp.body?.string() ?: ""
             val json = JSONObject(text)
             if (resp.isSuccessful) {
-                val statusMsg = json.optString("status", json.optString("message", "Password reset link sent to your email!"))
-                Pair(true, statusMsg)
+                Pair(true, "Password reset email sent! Please check your inbox and Spam folder.")
             } else {
-                val errMsg = json.optString("error", "Failed to send reset email.")
-                Pair(false, errMsg)
+                val errObj = json.optJSONObject("error")
+                val msg = errObj?.optString("message", "User not found") ?: "User not found"
+                if (msg.contains("EMAIL_NOT_FOUND", ignoreCase = true)) {
+                    Pair(false, "No registered account found with email '$cleanEmail'.")
+                } else {
+                    Pair(false, "Failed to send reset link: $msg")
+                }
             }
         } catch (e: Exception) {
-            Pair(false, e.localizedMessage ?: "Network error")
+            Pair(false, e.localizedMessage ?: "Network error during password reset")
         }
     }
+
 
 
     fun saveToFirestore(item: JSONObject): String? {

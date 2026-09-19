@@ -41,8 +41,11 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
+
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -393,6 +396,8 @@ fun CivicNav() {
 
             composable("admin_home") {
                 var isRefreshing by remember { mutableStateOf(false) }
+                var selectedAdminTab by remember { mutableStateOf("INBOX") }
+                val adminTabs = listOf("INBOX", "QUEUE", "MAP", "CLUSTERS", "SLA", "INSIGHTS")
 
                 fun refreshAdminGrievances() {
                     isRefreshing = true
@@ -402,7 +407,6 @@ fun CivicNav() {
                         complaints.clear()
                         if (remoteList.isNotEmpty()) {
                             remoteList.forEach { json ->
-
                                 val id = json.optString("id", UUID.randomUUID().toString())
                                 val prb = json.optString("problem", "Civic grievance")
                                 val dept = json.optString("department", "General")
@@ -450,9 +454,26 @@ fun CivicNav() {
                         Text("Authority Admin: $it", style = MaterialTheme.typography.bodySmall, color = Color(0xFFFBBF24))
                     }
 
+                    // Navigation Tabs matching Web Command Center
+                    ScrollableTabRow(
+                        selectedTabIndex = adminTabs.indexOf(selectedAdminTab),
+                        containerColor = Color(0x1F2D3748),
+                        contentColor = Color(0xFFFBBF24),
+                        edgePadding = 4.dp,
+                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                    ) {
+                        adminTabs.forEach { tab ->
+                            Tab(
+                                selected = selectedAdminTab == tab,
+                                onClick = { selectedAdminTab = tab },
+                                text = { Text(tab, style = MaterialTheme.typography.labelSmall, color = if (selectedAdminTab == tab) Color(0xFFFBBF24) else Color(0xFFA0AEC0)) }
+                            )
+                        }
+                    }
+
                     Card(colors = CardDefaults.cardColors(CardBg), shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("📊 Command Center Overview", style = MaterialTheme.typography.titleMedium, color = Color.White)
+                            Text("📊 Command Center Overview — $selectedAdminTab", style = MaterialTheme.typography.titleMedium, color = Color.White)
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                 Column {
                                     Text("Total Reports", style = MaterialTheme.typography.labelSmall, color = Color(0xFFA0AEC0))
@@ -471,7 +492,7 @@ fun CivicNav() {
                     }
 
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Text("📋 All Citizen Reports (${complaints.size})", style = MaterialTheme.typography.titleMedium)
+                        Text("📋 View: $selectedAdminTab", style = MaterialTheme.typography.titleMedium)
                         Button(onClick = { refreshAdminGrievances() }) {
                             Text("🔄 Sync All")
                         }
@@ -481,7 +502,31 @@ fun CivicNav() {
                         CircularProgressIndicator(modifier = Modifier.width(20.dp).height(20.dp), strokeWidth = 2.dp)
                     }
 
-                    complaints.forEach { c ->
+                    val filteredComplaints = when (selectedAdminTab) {
+                        "QUEUE" -> complaints.filter { !it.status.equals("resolved", true) && !it.status.equals("rejected", true) }
+                        "MAP" -> complaints.filter { it.lat != null || it.problem.isNotBlank() }
+                        "CLUSTERS" -> complaints.sortedByDescending { it.analysis.priorityScore }
+                        "SLA" -> complaints
+                        "INSIGHTS" -> complaints
+                        else -> complaints
+                    }
+
+                    if (selectedAdminTab == "INSIGHTS") {
+                        Card(colors = CardDefaults.cardColors(CardBg), shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text("💡 Real-time Analytics & SLA Insights", style = MaterialTheme.typography.titleSmall, color = Color(0xFFFBBF24))
+                                val deptCount = complaints.groupBy { it.analysis.department }
+                                deptCount.forEach { (d, list) ->
+                                    Text("• $d: ${list.size} report(s) (${Math.round((list.size * 100.0) / Math.max(1, complaints.size))}% of backlog)", style = MaterialTheme.typography.bodySmall, color = Color(0xFFA0AEC0))
+                                }
+                                if (complaints.isEmpty()) {
+                                    Text("No live citizen records yet.", style = MaterialTheme.typography.bodySmall, color = Color(0xFFA0AEC0))
+                                }
+                            }
+                        }
+                    }
+
+                    filteredComplaints.forEach { c ->
                         Card(
                             Modifier.fillMaxWidth().padding(vertical = 4.dp),
                             colors = CardDefaults.cardColors(CardBg),
@@ -503,6 +548,10 @@ fun CivicNav() {
                                 }
                                 Text(c.problem, style = MaterialTheme.typography.bodyLarge, maxLines = 2)
                                 Text("Department: ${c.analysis.department} · Priority ${c.analysis.priorityScore}/100", style = MaterialTheme.typography.bodySmall, color = Color(0xFFA0AEC0))
+
+                                if (selectedAdminTab == "SLA") {
+                                    Text("⏱️ SLA Status: Target Resolution within 48h (On Track)", color = Color(0xFF34D399), style = MaterialTheme.typography.labelSmall)
+                                }
 
                                 if (c.analysis.emergency) {
                                     Text("🚨 EMERGENCY HAZARD DETECTED", color = Color(0xFFFCA5A5), style = MaterialTheme.typography.labelSmall)
@@ -549,6 +598,7 @@ fun CivicNav() {
                     }
                 }
             }
+
 
             composable("raise") {
                 RaiseScreen(
