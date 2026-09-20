@@ -49,7 +49,13 @@ def send_email(to_email, subject, body, attachments=None):
         print("Notice:", err_msg)
         return False, err_msg
 
+    # Force IPv4 socket resolution to bypass cloud container IPv6 route issues
+    original_getaddrinfo = socket.getaddrinfo
+    def getaddrinfo_ipv4(host, port, family=0, type=0, proto=0, flags=0):
+        return original_getaddrinfo(host, port, socket.AF_INET, type, proto, flags)
+
     try:
+        socket.getaddrinfo = getaddrinfo_ipv4
         msg = EmailMessage()
         msg["From"] = f"CivicFlow AI Support <{sender}>"
         msg["To"] = to_email
@@ -73,14 +79,14 @@ def send_email(to_email, subject, body, attachments=None):
                         print("Attachment read notice:", fe)
 
         try:
-            with smtplib.SMTP("smtp.gmail.com", 587, timeout=10) as server:
+            with smtplib.SMTP("smtp.gmail.com", 587, timeout=12) as server:
                 server.starttls()
                 server.login(sender, password)
                 server.send_message(msg)
             return True, "OK"
         except Exception as e1:
             try:
-                with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=10) as server:
+                with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=12) as server:
                     server.login(sender, password)
                     server.send_message(msg)
                 return True, "OK"
@@ -88,6 +94,8 @@ def send_email(to_email, subject, body, attachments=None):
                 err_detail = f"SMTP Error (587: {e1} | 465: {e2})"
                 print("SMTP dispatch notice:", err_detail)
                 return False, err_detail
+    finally:
+        socket.getaddrinfo = original_getaddrinfo
 
 
 def _gemini_prompt(user_message: str, city: str) -> str:
