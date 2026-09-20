@@ -72,14 +72,22 @@ def send_email(to_email, subject, body, attachments=None):
                     except Exception as fe:
                         print("Attachment read notice:", fe)
 
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=10) as server:
-            server.login(sender, password)
-            server.send_message(msg)
-        return True, "OK"
-    except Exception as err:
-        err_detail = f"SMTP Error: {str(err)}"
-        print("SMTP dispatch notice:", err_detail)
-        return False, err_detail
+        try:
+            with smtplib.SMTP("smtp.gmail.com", 587, timeout=10) as server:
+                server.starttls()
+                server.login(sender, password)
+                server.send_message(msg)
+            return True, "OK"
+        except Exception as e1:
+            try:
+                with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=10) as server:
+                    server.login(sender, password)
+                    server.send_message(msg)
+                return True, "OK"
+            except Exception as e2:
+                err_detail = f"SMTP Error (587: {e1} | 465: {e2})"
+                print("SMTP dispatch notice:", err_detail)
+                return False, err_detail
 
 
 def _gemini_prompt(user_message: str, city: str) -> str:
