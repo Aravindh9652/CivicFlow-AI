@@ -147,12 +147,15 @@ function getDeviceId() {
             id: d.id,
             ...d.data(),
           }))
-          .filter(
-            (g) =>
-              (uid && (g.userId === uid || g.citizenId === uid)) ||
-              (mail && g.citizenEmail?.toLowerCase() === mail) ||
-              (devId && (g.deviceId === devId || g.userId === devId || g.citizenId === devId))
-          );
+          .filter((g) => {
+            if (uid || mail) {
+              return (
+                (uid && (g.userId === uid || g.citizenId === uid)) ||
+                (mail && g.citizenEmail?.toLowerCase() === mail)
+              );
+            }
+            return devId && (g.deviceId === devId || g.userId === devId || g.citizenId === devId);
+          });
         list.sort((a, b) => {
           const getMs = (item) => {
             if (item.createdAt?.toDate) return item.createdAt.toDate().getTime();
