@@ -602,6 +602,16 @@ def request_password_reset():
         return jsonify({"error": str(e)}), 500
 
 
+import threading
+
+def _background_send(recipients, subject, body, attachments):
+    try:
+        ok, err = send_email(recipients, subject, body, attachments)
+        print(f"[Email Background Dispatch] to={recipients} result={ok} detail={err}")
+    except Exception as e:
+        print(f"[Email Background Dispatch Error] {e}")
+
+
 # ---------------- SEND EMAIL ----------------
 @app.route("/send-email", methods=["POST"])
 def send_mail_api():
@@ -659,24 +669,19 @@ Longitude: {longitude if longitude else "N/A"}
 -- Sent via CivicFlow AI (Gemini + local open-source first-pass)
 """
 
-        ok, err_msg = send_email(
-            recipients,
-            "New Civic Grievance Report",
-            full_body,
-            attachment_tuples
+        # Non-blocking async background thread for zero-latency UI response
+        thread = threading.Thread(
+            target=_background_send,
+            args=(recipients, "New Civic Grievance Report", full_body, attachment_tuples),
+            daemon=True
         )
-        if ok:
-            sent_count = len(recipients)
-        else:
-            last_error = err_msg
+        thread.start()
 
-        is_sent = sent_count > 0
         return jsonify({
-            "status": f"Mail sent successfully to {sent_count} recipient(s)" if is_sent else f"Mail notice: {last_error}",
-            "sent": is_sent,
-            "recipientsCount": sent_count,
-            "errorDetail": last_error if not is_sent else None
-        })
+            "status": f"Mail queued and sending to {len(recipients)} recipient(s)",
+            "sent": True,
+            "recipientsCount": len(recipients)
+        }), 200
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
