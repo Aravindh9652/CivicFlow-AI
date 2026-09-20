@@ -413,12 +413,13 @@ def send_email(to_email, subject, body, attachments=None):
 @app.route("/send-email", methods=["POST"])
 def send_mail_api():
     try:
-        body = request.form.get("body", "").strip()
-        detailed_location = request.form.get("detailed_location", "").strip()
-        latitude = request.form.get("latitude", "").strip()
-        longitude = request.form.get("longitude", "").strip()
-        citizen_email = request.form.get("citizen_email", "").strip()
-        attachments = request.files.getlist("image")
+        json_data = request.get_json(silent=True) or {}
+        body = (request.form.get("body") or request.form.get("draft_email") or json_data.get("body") or json_data.get("draft_email") or "").strip()
+        detailed_location = (request.form.get("detailed_location") or json_data.get("detailed_location") or "").strip()
+        latitude = (request.form.get("latitude") or json_data.get("latitude") or "").strip()
+        longitude = (request.form.get("longitude") or json_data.get("longitude") or "").strip()
+        citizen_email = (request.form.get("citizen_email") or json_data.get("citizen_email") or "").strip()
+        attachments = request.files.getlist("image") if request.files else []
 
         if not body:
             return jsonify({"error": "Mail body missing"}), 400
