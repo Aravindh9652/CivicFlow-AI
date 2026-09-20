@@ -356,58 +356,86 @@ def send_email(to_email, subject, body, attachments=None):
         print("Notice:", err_msg)
         return False, err_msg
 
+    if isinstance(to_email, (list, tuple, set)):
+        target_list = list(to_email)
+    else:
+        target_list = [str(to_email)]
+
+    errors = []
+    success_count = 0
+
+    def _dispatch_on_server(srv):
+        nonlocal success_count
+        srv.login(sender, password)
+        for rcpt in target_list:
+            try:
+                single_msg = EmailMessage()
+                single_msg["From"] = f"CivicFlow AI Support <{sender}>"
+                single_msg["To"] = rcpt
+                single_msg["Reply-To"] = sender
+                single_msg["Subject"] = subject
+                single_msg.set_content(body)
+
+                if attachments:
+                    for item in attachments:
+                        if isinstance(item, tuple) and item[0] and item[1]:
+                            single_msg.add_attachment(
+                                item[1],
+                                maintype="application",
+                                subtype="octet-stream",
+                                filename=item[0]
+                            )
+                        elif hasattr(item, "filename") and item.filename:
+                            try:
+                                item.seek(0)
+                                fdata = item.read()
+                                if fdata:
+                                    single_msg.add_attachment(
+                                        fdata,
+                                        maintype="application",
+                                        subtype="octet-stream",
+                                        filename=item.filename
+                                    )
+                            except Exception:
+                                pass
+
+                srv.send_message(single_msg)
+                success_count += 1
+            except Exception as send_err:
+                errors.append(f"{rcpt}: {send_err}")
+
     try:
-        msg = EmailMessage()
-        msg["From"] = f"CivicFlow AI Support <{sender}>"
-        if isinstance(to_email, (list, tuple, set)):
-            msg["To"] = ", ".join(list(to_email))
-        else:
-            msg["To"] = str(to_email)
-        msg["Reply-To"] = sender
-        msg["Subject"] = subject
-        msg.set_content(body)
-
-        if attachments:
-            for item in attachments:
-                fname, fdata = None, None
-                if isinstance(item, tuple):
-                    fname, fdata = item
-                elif hasattr(item, "filename") and item.filename:
-                    fname = item.filename
-                    try:
-                        item.seek(0)
-                        fdata = item.read()
-                    except Exception:
-                        fdata = None
-
-                if fname and fdata:
-                    try:
-                        msg.add_attachment(
-                            fdata,
-                            maintype="application",
-                            subtype="octet-stream",
-                            filename=fname
-                        )
-                    except Exception as fe:
-                        print("Attachment read notice:", fe)
-
+        # Attempt 1: Standard SMTP 587
         try:
-            with IPv4SMTP("smtp.gmail.com", 587, timeout=6) as server:
+            with smtplib.SMTP("smtp.gmail.com", 587, timeout=8) as server:
                 server.ehlo("gmail.com")
                 server.starttls()
-                server.login(sender, password)
-                server.send_message(msg)
-            return True, "OK"
+                _dispatch_on_server(server)
+            return success_count > 0, f"Sent to {success_count} address(es)" if success_count > 0 else f"Errors: {errors}"
         except Exception as e1:
+            # Attempt 2: Standard SMTP_SSL 465
             try:
-                with IPv4SMTP_SSL("smtp.gmail.com", 465, timeout=6) as server:
-                    server.login(sender, password)
-                    server.send_message(msg)
-                return True, "OK"
+                with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=8) as server:
+                    _dispatch_on_server(server)
+                return success_count > 0, f"Sent to {success_count} address(es)" if success_count > 0 else f"Errors: {errors}"
             except Exception as e2:
-                err_detail = f"SMTP Error (587: {e1} | 465: {e2})"
-                print("SMTP dispatch notice:", err_detail)
-                return False, err_detail
+                # Attempt 3: IPv4 SMTP 587
+                try:
+                    with IPv4SMTP("smtp.gmail.com", 587, timeout=8) as server:
+                        server.ehlo("gmail.com")
+                        server.starttls()
+                        _dispatch_on_server(server)
+                    return success_count > 0, f"Sent to {success_count} address(es)" if success_count > 0 else f"Errors: {errors}"
+                except Exception as e3:
+                    # Attempt 4: IPv4 SMTP_SSL 465
+                    try:
+                        with IPv4SMTP_SSL("smtp.gmail.com", 465, timeout=8) as server:
+                            _dispatch_on_server(server)
+                        return success_count > 0, f"Sent to {success_count} address(es)" if success_count > 0 else f"Errors: {errors}"
+                    except Exception as e4:
+                        err_detail = f"SMTP Errors (std587: {e1} | std465: {e2} | ipv4_587: {e3} | ipv4_465: {e4})"
+                        print("SMTP dispatch notice:", err_detail)
+                        return False, err_detail
     except Exception as err:
         err_detail = f"Email Prep Error: {str(err)}"
         print("SMTP dispatch notice:", err_detail)
