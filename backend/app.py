@@ -305,12 +305,34 @@ def _analyze(user_message: str, city: str, image_path: str | None = None, image_
         "localModel": local.get("localModel"),
     }
     return result
+# ---------------- EMAIL & FIREBASE CONFIG ----------------
+SENDER_EMAIL = (os.getenv("SENDER_EMAIL") or "civicflow.grievance.ai@gmail.com").strip()
+SENDER_PASSWORD = (os.getenv("SENDER_PASSWORD") or "kocltewegfkktmfm").strip()
+FIREBASE_API_KEY = os.getenv("FIREBASE_API_KEY", "AIzaSyCDFUc8TFbhnSlL5l1wgocwWCE6xxN4yl8")
 
+# Same email for all departments (hackathon demo)
+# AUTHORITY_EMAIL imported from civic_intelligence (env-overridable)
+
+# ---------------- IPV4 SMTP HELPERS (FOR RENDER / CLOUD HOSTING) ----------------
+class IPv4SMTP(smtplib.SMTP):
+    """SMTP client that forces IPv4 connections to bypass cloud IPv6 routing blocks."""
+    def _get_socket(self, host, port, timeout):
+        addrs = socket.getaddrinfo(host, port, socket.AF_INET, socket.SOCK_STREAM)
+        ip = addrs[0][4][0]
+        return socket.create_connection((ip, port), timeout, self.source_address)
+
+class IPv4SMTP_SSL(smtplib.SMTP_SSL):
+    """SMTP_SSL client that forces IPv4 connections to bypass cloud IPv6 routing blocks."""
+    def _get_socket(self, host, port, timeout):
+        addrs = socket.getaddrinfo(host, port, socket.AF_INET, socket.SOCK_STREAM)
+        ip = addrs[0][4][0]
+        new_socket = socket.create_connection((ip, port), timeout, self.source_address)
+        return self.context.wrap_socket(new_socket, server_hostname=host)
 
 # ---------------- EMAIL HELPER ----------------
 def send_email(to_email, subject, body, attachments=None):
     sender = (os.getenv("SENDER_EMAIL") or SENDER_EMAIL or "civicflow.grievance.ai@gmail.com").strip()
-    password = (os.getenv("SENDER_PASSWORD") or SENDER_PASSWORD or "").strip()
+    password = (os.getenv("SENDER_PASSWORD") or SENDER_PASSWORD or "kocltewegfkktmfm").strip()
 
     if not sender or not password:
         print("Notice: SENDER_EMAIL or SENDER_PASSWORD not configured. Skipping SMTP email notification.")
@@ -325,26 +347,65 @@ def send_email(to_email, subject, body, attachments=None):
         msg.set_content(body)
 
         if attachments:
-            for file in attachments:
-                if file and file.filename:
+            for item in attachments:
+                fname, fdata = None, None
+                if isinstance(item, tuple):
+                    fname, fdata = item
+                elif hasattr(item, "filename") and item.filename:
+                    fname = item.filename
                     try:
-                        file_data = file.read()
-                        if file_data:
-                            msg.add_attachment(
-                                file_data,
-                                maintype="application",
-                                subtype="octet-stream",
-                                filename=file.filename
-                            )
+                        item.seek(0)
+                        fdata = item.read()
+                    except Exception:
+                        fdata = None
+
+                if fname and fdata:
+                    try:
+                        msg.add_attachment(
+                            fdata,
+                            maintype="application",
+                            subtype="octet-stream",
+                            filename=fname
+                        )
                     except Exception as fe:
                         print("Attachment read notice:", fe)
 
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=10) as server:
-            server.login(sender, password)
-            server.send_message(msg)
-        return True
+        # 1. Try standard SSL 465
+        try:
+            with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=10) as server:
+                server.login(sender, password)
+                server.send_message(msg)
+            return True
+        except Exception as e1:
+            # 2. Try standard TLS 587
+            try:
+                with smtplib.SMTP("smtp.gmail.com", 587, timeout=10) as server:
+                    server.ehlo("gmail.com")
+                    server.starttls()
+                    server.login(sender, password)
+                    server.send_message(msg)
+                return True
+            except Exception as e2:
+                # 3. Try IPv4 SSL 465
+                try:
+                    with IPv4SMTP_SSL("smtp.gmail.com", 465, timeout=10) as server:
+                        server.login(sender, password)
+                        server.send_message(msg)
+                    return True
+                except Exception as e3:
+                    # 4. Try IPv4 TLS 587
+                    try:
+                        with IPv4SMTP("smtp.gmail.com", 587, timeout=10) as server:
+                            server.ehlo("gmail.com")
+                            server.starttls()
+                            server.login(sender, password)
+                            server.send_message(msg)
+                        return True
+                    except Exception as e4:
+                        print(f"SMTP Error: ssl465={e1} | tls587={e2} | ipv4_ssl465={e3} | ipv4_tls587={e4}")
+                        return False
     except Exception as err:
-        print("SMTP dispatch notice (grievance persisted):", err)
+        print("Email prep notice:", err)
         return False
 
 
