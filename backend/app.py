@@ -307,139 +307,111 @@ def _analyze(user_message: str, city: str, image_path: str | None = None, image_
     return result
 
 
-# ---------------- IPV4 SMTP HELPERS (FOR RENDER / CLOUD HOSTING) ----------------
-def create_ipv4_connection(host, port, timeout=5):
-    """Try connecting to resolved IPv4 addresses sequentially with short timeout to prevent hangs."""
-    err = None
-    try:
-        addrs = socket.getaddrinfo(host, port, socket.AF_INET, socket.SOCK_STREAM)
-    except Exception as e:
-        addrs = []
-        err = e
-
-    for res in addrs:
-        af, socktype, proto, canonname, sa = res
-        sock = None
-        try:
-            sock = socket.socket(af, socktype, proto)
-            if timeout is not None:
-                sock.settimeout(timeout)
-            sock.connect(sa)
-            return sock
-        except socket.error as e:
-            err = e
-            if sock is not None:
-                sock.close()
-    if err is not None:
-        raise err
-    raise socket.error(f"Could not connect to {host}:{port} via IPv4")
-
-class IPv4SMTP(smtplib.SMTP):
-    """SMTP client forcing IPv4 connections to bypass cloud container IPv6 blocks."""
-    def _get_socket(self, host, port, timeout):
-        return create_ipv4_connection(host, port, timeout)
-
-class IPv4SMTP_SSL(smtplib.SMTP_SSL):
-    """SMTP_SSL client forcing IPv4 connections to bypass cloud container IPv6 blocks."""
-    def _get_socket(self, host, port, timeout):
-        new_sock = create_ipv4_connection(host, port, timeout)
-        return self.context.wrap_socket(new_sock, server_hostname=host)
-
-
 # ---------------- EMAIL HELPER ----------------
 def send_email(to_email, subject, body, attachments=None):
-    sender = os.getenv("SENDER_EMAIL") or SENDER_EMAIL or "civicflow.grievance.ai@gmail.com"
+    sender = (os.getenv("SENDER_EMAIL") or SENDER_EMAIL or "civicflow.grievance.ai@gmail.com").strip()
     password = (os.getenv("SENDER_PASSWORD") or SENDER_PASSWORD or "").strip()
 
     if not sender or not password:
-        err_msg = f"SENDER_PASSWORD is empty or missing (sender={sender})"
-        print("Notice:", err_msg)
-        return False, err_msg
-
-    if isinstance(to_email, (list, tuple, set)):
-        target_list = list(to_email)
-    else:
-        target_list = [str(to_email)]
-
-    errors = []
-    success_count = 0
-
-    def _dispatch_on_server(srv):
-        nonlocal success_count
-        srv.login(sender, password)
-        for rcpt in target_list:
-            try:
-                single_msg = EmailMessage()
-                single_msg["From"] = f"CivicFlow AI Support <{sender}>"
-                single_msg["To"] = rcpt
-                single_msg["Reply-To"] = sender
-                single_msg["Subject"] = subject
-                single_msg.set_content(body)
-
-                if attachments:
-                    for item in attachments:
-                        if isinstance(item, tuple) and item[0] and item[1]:
-                            single_msg.add_attachment(
-                                item[1],
-                                maintype="application",
-                                subtype="octet-stream",
-                                filename=item[0]
-                            )
-                        elif hasattr(item, "filename") and item.filename:
-                            try:
-                                item.seek(0)
-                                fdata = item.read()
-                                if fdata:
-                                    single_msg.add_attachment(
-                                        fdata,
-                                        maintype="application",
-                                        subtype="octet-stream",
-                                        filename=item.filename
-                                    )
-                            except Exception:
-                                pass
-
-                srv.send_message(single_msg)
-                success_count += 1
-            except Exception as send_err:
-                errors.append(f"{rcpt}: {send_err}")
+        print("Notice: SENDER_EMAIL or SENDER_PASSWORD not configured. Skipping SMTP email notification.")
+        return False
 
     try:
-        # Attempt 1: Standard SMTP 587
-        try:
-            with smtplib.SMTP("smtp.gmail.com", 587, timeout=8) as server:
-                server.ehlo("gmail.com")
-                server.starttls()
-                _dispatch_on_server(server)
-            return success_count > 0, f"Sent to {success_count} address(es)" if success_count > 0 else f"Errors: {errors}"
-        except Exception as e1:
-            # Attempt 2: Standard SMTP_SSL 465
-            try:
-                with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=8) as server:
-                    _dispatch_on_server(server)
-                return success_count > 0, f"Sent to {success_count} address(es)" if success_count > 0 else f"Errors: {errors}"
-            except Exception as e2:
-                # Attempt 3: IPv4 SMTP 587
-                try:
-                    with IPv4SMTP("smtp.gmail.com", 587, timeout=8) as server:
-                        server.ehlo("gmail.com")
-                        server.starttls()
-                        _dispatch_on_server(server)
-                    return success_count > 0, f"Sent to {success_count} address(es)" if success_count > 0 else f"Errors: {errors}"
-                except Exception as e3:
-                    # Attempt 4: IPv4 SMTP_SSL 465
+        msg = EmailMessage()
+        msg["From"] = f"CivicFlow AI Support <{sender}>"
+        msg["To"] = to_email
+        msg["Reply-To"] = sender
+        msg["Subject"] = subject
+        msg.set_content(body)
+
+        if attachments:
+            for file in attachments:
+                if file and file.filename:
                     try:
-                        with IPv4SMTP_SSL("smtp.gmail.com", 465, timeout=8) as server:
-                            _dispatch_on_server(server)
-                        return success_count > 0, f"Sent to {success_count} address(es)" if success_count > 0 else f"Errors: {errors}"
-                    except Exception as e4:
-                        err_detail = f"SMTP Errors (std587: {e1} | std465: {e2} | ipv4_587: {e3} | ipv4_465: {e4})"
-                        print("SMTP dispatch notice:", err_detail)
-                        return False, err_detail
+                        file_data = file.read()
+                        if file_data:
+                            msg.add_attachment(
+                                file_data,
+                                maintype="application",
+                                subtype="octet-stream",
+                                filename=file.filename
+                            )
+                    except Exception as fe:
+                        print("Attachment read notice:", fe)
+
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=10) as server:
+            server.login(sender, password)
+            server.send_message(msg)
+        return True
     except Exception as err:
-        err_detail = f"Email Prep Error: {str(err)}"
-        print("SMTP dispatch notice:", err_detail)
-        return False, err_detail
+        print("SMTP dispatch notice (grievance persisted):", err)
+        return False
+
+
+# ---------------- SEND EMAIL ----------------
+@app.route("/send-email", methods=["POST"])
+def send_mail_api():
+    try:
+        body = request.form.get("body", "").strip()
+        detailed_location = request.form.get("detailed_location", "").strip()
+        latitude = request.form.get("latitude", "").strip()
+        longitude = request.form.get("longitude", "").strip()
+        citizen_email = request.form.get("citizen_email", "").strip()
+        attachments = request.files.getlist("image")
+
+        if not body:
+            return jsonify({"error": "Mail body missing"}), 400
+
+        # Build list of recipient addresses: AUTHORITY_EMAIL + citizen_email
+        recipients = [AUTHORITY_EMAIL]
+        if citizen_email and "@" in citizen_email:
+            c_clean = citizen_email.lower().strip()
+            if not any(r.lower() == c_clean for r in recipients):
+                recipients.append(c_clean)
+
+        # ✅ Google Maps clickable link
+        maps_link = ""
+        if latitude and longitude:
+            maps_link = f"https://www.google.com/maps?q={latitude},{longitude}"
+
+        full_body = f"""CIVIC GRIEVANCE REPORT
+
+📍 Detailed Location:
+{detailed_location if detailed_location else "Not provided"}
+
+🧭 Coordinates:
+Latitude: {latitude if latitude else "N/A"}
+Longitude: {longitude if longitude else "N/A"}
+
+🗺️ Open in Google Maps:
+{maps_link if maps_link else "Location link not available"}
+
+📝 Complaint:
+{body}
+
+-- Sent via CivicFlow AI (Gemini + local open-source first-pass)
+"""
+
+        sent_count = 0
+        for rcpt in recipients:
+            ok = send_email(
+                rcpt,
+                "New Civic Grievance Report",
+                full_body,
+                attachments
+            )
+            if ok:
+                sent_count += 1
+
+        is_sent = sent_count > 0
+        return jsonify({
+            "status": "Mail sent successfully" if is_sent else "Mail notification bypassed (check SENDER_PASSWORD on Render)",
+            "sent": is_sent,
+            "recipientsCount": sent_count
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 # ---------------- AI ANALYSIS ----------------
@@ -626,91 +598,6 @@ def request_password_reset():
             if "EMAIL_NOT_FOUND" in msg:
                 return jsonify({"error": "No registered account found with this email address."}), 404
             return jsonify({"error": f"Failed to send password reset: {msg}"}), 400
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-import threading
-
-def _background_send(recipients, subject, body, attachments):
-    try:
-        ok, err = send_email(recipients, subject, body, attachments)
-        print(f"[Email Background Dispatch] to={recipients} result={ok} detail={err}")
-    except Exception as e:
-        print(f"[Email Background Dispatch Error] {e}")
-
-
-# ---------------- SEND EMAIL ----------------
-@app.route("/send-email", methods=["POST"])
-def send_mail_api():
-    try:
-        body = request.form.get("body", "").strip()
-        detailed_location = request.form.get("detailed_location", "").strip()
-        latitude = request.form.get("latitude", "").strip()
-        longitude = request.form.get("longitude", "").strip()
-        citizen_email = request.form.get("citizen_email", "").strip()
-        raw_attachments = request.files.getlist("image")
-
-        if not body:
-            return jsonify({"error": "Mail body missing"}), 400
-
-        # Buffer attachments into memory tuples so all recipients receive the photo attachment
-        attachment_tuples = []
-        if raw_attachments:
-            for f in raw_attachments:
-                if f and f.filename:
-                    try:
-                        f.seek(0)
-                        f_bytes = f.read()
-                        if f_bytes:
-                            attachment_tuples.append((f.filename, f_bytes))
-                    except Exception as fe:
-                        print("Attachment buffer notice:", fe)
-
-        # Build list of recipient addresses: AUTHORITY_EMAIL + citizen_email (if provided)
-        recipients = [AUTHORITY_EMAIL]
-        if citizen_email and "@" in citizen_email:
-            c_clean = citizen_email.lower().strip()
-            if not any(r.lower() == c_clean for r in recipients):
-                recipients.append(c_clean)
-
-        # ✅ Google Maps clickable link
-        maps_link = ""
-        if latitude and longitude:
-            maps_link = f"https://www.google.com/maps?q={latitude},{longitude}"
-
-        full_body = f"""CIVIC GRIEVANCE REPORT
-
-📍 Detailed Location:
-{detailed_location if detailed_location else "Not provided"}
-
-🧭 Coordinates:
-Latitude: {latitude if latitude else "N/A"}
-Longitude: {longitude if longitude else "N/A"}
-
-🗺️ Open in Google Maps:
-{maps_link if maps_link else "Location link not available"}
-
-📝 Complaint:
-{body}
-
--- Sent via CivicFlow AI (Gemini + local open-source first-pass)
-"""
-
-        # Non-blocking async background thread for zero-latency UI response
-        thread = threading.Thread(
-            target=_background_send,
-            args=(recipients, "New Civic Grievance Report", full_body, attachment_tuples),
-            daemon=True
-        )
-        thread.start()
-
-        return jsonify({
-            "status": f"Mail queued and sending to {len(recipients)} recipient(s)",
-            "sent": True,
-            "recipientsCount": len(recipients)
-        }), 200
-
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
