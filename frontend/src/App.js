@@ -865,20 +865,28 @@ function getDeviceId() {
     return notes;
   }, [allGrievances, clusters]);
 
+  const handleAuthModeChange = (mode) => {
+    setAuthMode(mode);
+    setEmail("");
+    setPassword("");
+    setName("");
+    setPhone("");
+    setAuthError("");
+  };
+
   if (!user) {
     return (
       <div className="auth-container">
         <Starfield />
         <div className="auth-card">
           <div className="tabs" style={{ marginBottom: 20 }}>
-            <button className={`tab ${authMode === "login" ? "active" : ""}`} onClick={() => { setAuthMode("login"); setEmail(""); setPassword(""); setName(""); setPhone(""); setAuthError(""); }}>Citizen Login</button>
-            <button className={`tab ${authMode === "register" ? "active" : ""}`} onClick={() => { setAuthMode("register"); setEmail(""); setPassword(""); setName(""); setPhone(""); setAuthError(""); }}>Register</button>
-            <button className={`tab ${authMode === "admin" ? "active" : ""}`} onClick={() => { setAuthMode("admin"); setEmail(""); setPassword(""); setName(""); setPhone(""); setAuthError(""); }}>Authority Admin</button>
+            <button className={`tab ${authMode === "login" ? "active" : ""}`} onClick={() => handleAuthModeChange("login")}>Citizen Login</button>
+            <button className={`tab ${authMode === "register" ? "active" : ""}`} onClick={() => handleAuthModeChange("register")}>Register</button>
+            <button className={`tab ${authMode === "admin" ? "active" : ""}`} onClick={() => handleAuthModeChange("admin")}>Authority Admin</button>
           </div>
 
-
           {authMode === "login" && (
-            <>
+            <form onSubmit={(e) => { e.preventDefault(); login(); }}>
               <h2>🔐 Welcome Back</h2>
               <p className="muted text-center mb-lg">
                 Sign in to manage your grievances
@@ -886,6 +894,7 @@ function getDeviceId() {
               <label className="sr-only" htmlFor="login-email">Email Address</label>
               <input
                 id="login-email"
+                name="login_email"
                 className="input"
                 type="email"
                 placeholder="Email Address"
@@ -898,6 +907,7 @@ function getDeviceId() {
                 <label className="sr-only" htmlFor="login-password">Password</label>
                 <input
                   id="login-password"
+                  name="login_password"
                   className="input"
                   type={showLoginPassword ? "text" : "password"}
                   placeholder="Password"
@@ -925,37 +935,43 @@ function getDeviceId() {
                   Forgot Password?
                 </span>
               </div>
-              <button className="btn primary" onClick={login} style={{ width: "100%" }}>
+              <button type="submit" className="btn primary" style={{ width: "100%" }}>
                 <span>🚀 Login</span>
               </button>
               <p className="text-center mt-md">
                 New user?{" "}
-                <span className="auth-link" role="button" tabIndex={0} onClick={() => setAuthMode("register")}>
+                <span className="auth-link" role="button" tabIndex={0} onClick={() => handleAuthModeChange("register")}>
                   Register here
                 </span>
               </p>
-            </>
+            </form>
           )}
 
           {authMode === "admin" && (
-            <>
+            <form autoComplete="off" onSubmit={(e) => { e.preventDefault(); login(); }}>
               <h2>🛡 Authority Admin Portal</h2>
               <p className="muted text-center mb-lg">
                 Authorized Login for City Authority & Command Center
               </p>
               <input
+                id="admin-email"
+                name="admin_user_email"
                 className="input"
                 type="email"
                 placeholder="Admin Email (e.g. admin@grievancenet.com)"
+                autoComplete="off"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
               <br /><br />
               <div className="password-wrap">
                 <input
+                  id="admin-password"
+                  name="admin_user_pass"
                   className="input"
                   type={showLoginPassword ? "text" : "password"}
                   placeholder="Password"
+                  autoComplete="new-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
@@ -968,27 +984,57 @@ function getDeviceId() {
                 </button>
               </div>
               <br /><br />
-              <button className="btn primary" onClick={login} style={{ width: "100%" }}>
+              <button type="submit" className="btn primary" style={{ width: "100%" }}>
                 <span>🛡 Sign in to Command Center</span>
               </button>
-            </>
+            </form>
           )}
 
           {authMode === "register" && (
-            <>
+            <form autoComplete="off" onSubmit={(e) => { e.preventDefault(); register(); }}>
               <h2>📝 Citizen Registration</h2>
               <p className="muted text-center mb-md">Creates a citizen account linked securely to your grievances.</p>
-              <input className="input" placeholder="Full Name *" value={name} onChange={(e) => setName(e.target.value)} />
+              <input
+                id="reg-name"
+                name="reg_fullname"
+                className="input"
+                placeholder="Full Name *"
+                autoComplete="off"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
               <br /><br />
-              <input className="input" type="email" placeholder="Email Address *" value={email} onChange={(e) => setEmail(e.target.value)} />
+              <input
+                id="reg-email"
+                name="reg_email_addr"
+                className="input"
+                type="email"
+                placeholder="Email Address *"
+                autoComplete="new-password"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
               <br /><br />
-              <input className="input" type="tel" placeholder="Phone Number *" value={phone} onChange={(e) => setPhone(e.target.value)} required />
+              <input
+                id="reg-phone"
+                name="reg_user_phone"
+                className="input"
+                type="tel"
+                placeholder="Phone Number *"
+                autoComplete="off"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                required
+              />
               <br /><br />
               <div className="password-wrap">
                 <input
+                  id="reg-password"
+                  name="reg_user_secret"
                   className="input"
                   type={showRegisterPassword ? "text" : "password"}
                   placeholder="Password *"
+                  autoComplete="new-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
@@ -1001,16 +1047,16 @@ function getDeviceId() {
                 </button>
               </div>
               <br /><br />
-              <button className="btn primary" onClick={register} style={{ width: "100%" }}>
+              <button type="submit" className="btn primary" style={{ width: "100%" }}>
                 Register Account
               </button>
               <p className="text-center mt-md">
                 Already registered?{" "}
-                <span className="auth-link" role="button" tabIndex={0} onClick={() => setAuthMode("login")}>
+                <span className="auth-link" role="button" tabIndex={0} onClick={() => handleAuthModeChange("login")}>
                   Login
                 </span>
               </p>
-            </>
+            </form>
           )}
 
           {authError && (
