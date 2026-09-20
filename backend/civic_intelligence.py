@@ -332,28 +332,43 @@ def _citizen_advice(department: str, emergency: bool) -> str:
 def _draft_mail(
     problem: str, city: str, department: str, category: str, emergency: bool
 ) -> str:
-    flag = "EMERGENCY — " if emergency else ""
-    return f"""To,
-The {department} Authority
+    subj_tag = f"CRITICAL EMERGENCY: {category}" if emergency else f"Civic Grievance Report — {category}"
+    dept_title = f"{department} Authority"
+    if department == "Electricity":
+        dept_title = "Executive Engineer / Assistant Engineer, Operations, Electricity Distribution Department"
+    elif department == "Water":
+        dept_title = "Executive Engineer, Water Supply & Sewerage Board"
+    elif department == "Municipal":
+        dept_title = "The Municipal Commissioner / Assistant Engineer, Public Works & Roads Department"
+    elif department == "Police":
+        dept_title = "Station House Officer (SHO) / Police Authority"
+    elif department == "Health":
+        dept_title = "District Health Officer / Public Health Authority"
 
-Subject: {flag}Civic grievance — {category}
+    loc_str = city if city else "Not specified"
+    urgency = "Immediate / Critical Emergency" if emergency else "High Priority Resolution Required"
+
+    return f"""To: {dept_title}
+
+Subject: {subj_tag} at {loc_str}
 
 Respected Sir/Madam,
 
-I would like to report the following civic issue:
+I am writing to formally report a civic grievance requiring your prompt attention and intervention.
 
+Problem Details:
 {problem}
 
-Location / area: {city or "Not specified"}
+The reported condition presents significant inconvenience, potential disruption, and public safety risks to local residents and passersby in {loc_str}.
 
-Kindly inspect and take necessary action. This report was prepared with CivicFlow AI
-assistance. For emergencies, citizens are advised to call {INDIA_EMERGENCY_NUMBER};
-this email is supporting evidence, not a substitute for emergency services.
+Please arrange for an immediate site inspection and dispatch a service crew to secure the area and repair the damaged infrastructure at the earliest.
 
-Thanking you.
+Location / Area: {loc_str}
+Urgency / Severity: {urgency}
 
-Yours sincerely,
-A concerned citizen
+Yours faithfully,
+Concerned Citizen
+-- Prepared with CivicFlow AI Assistance
 """
 
 

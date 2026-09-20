@@ -213,7 +213,7 @@ Return EXACTLY this JSON structure:
   "confidence": 0.0,
 
   "advice": "practical next steps for the citizen",
-  "draftedMail": "formal grievance email"
+  "draftedMail": "formal, professional official grievance email addressed to the responsible officer (e.g., 'To: Executive Engineer / Assistant Engineer, Operations...'), with a clear Subject line, polite formal body paragraphs detailing the issue, risks to public safety, location, requested action, and formal sign-off ('Yours faithfully, Concerned Citizen')"
 }}
 
 NUMERIC RULES:
@@ -560,8 +560,6 @@ def request_password_reset():
         return jsonify({"error": str(e)}), 500
 
 
-
-
 # ---------------- SEND EMAIL ----------------
 @app.route("/send-email", methods=["POST"])
 def send_mail_api():
@@ -576,7 +574,7 @@ def send_mail_api():
         if not body:
             return jsonify({"error": "Mail body missing"}), 400
 
-        # Buffer attachments into memory tuples so both emails receive the photo attachment
+        # Buffer attachments into memory tuples so all recipients receive the photo attachment
         attachment_tuples = []
         if raw_attachments:
             for f in raw_attachments:
@@ -589,12 +587,19 @@ def send_mail_api():
                     except Exception as fe:
                         print("Attachment buffer notice:", fe)
 
+        # Build list of recipient addresses: AUTHORITY_EMAIL + citizen_email (if provided)
+        recipients = [AUTHORITY_EMAIL]
+        if citizen_email and "@" in citizen_email:
+            c_clean = citizen_email.lower().strip()
+            if not any(r.lower() == c_clean for r in recipients):
+                recipients.append(c_clean)
+
         # ✅ Google Maps clickable link
         maps_link = ""
         if latitude and longitude:
             maps_link = f"https://www.google.com/maps?q={latitude},{longitude}"
 
-        authority_body = f"""CIVIC GRIEVANCE REPORT
+        full_body = f"""CIVIC GRIEVANCE REPORT
 
 📍 Detailed Location:
 {detailed_location if detailed_location else "Not provided"}
@@ -615,54 +620,17 @@ Longitude: {longitude if longitude else "N/A"}
         sent_count = 0
         last_error = ""
 
-        # 1. Send Official Grievance Report to Authority (civicflow.grievance.ai@gmail.com)
-        ok_auth, err_auth = send_email(
-            AUTHORITY_EMAIL,
-            "New Civic Grievance Report",
-            authority_body,
-            attachment_tuples
-        )
-        if ok_auth:
-            sent_count += 1
-        else:
-            last_error = err_auth
-
-        # 2. Send Citizen Confirmation & Status Tracking Email to Citizen Account
-        if citizen_email and "@" in citizen_email:
-            c_clean = citizen_email.lower().strip()
-            if c_clean != AUTHORITY_EMAIL.lower().strip():
-                citizen_body = f"""GRIEVANCE SUBMISSION CONFIRMATION — CIVICFLOW AI
-
-Dear Citizen,
-
-Your civic grievance report has been successfully submitted and logged into the CivicFlow AI system for department action.
-
-✅ Submission Status: Submitted
-📍 Location: {detailed_location if detailed_location else "Captured via GPS"}
-🧭 Coordinates: Lat: {latitude if latitude else "N/A"} | Lng: {longitude if longitude else "N/A"}
-🗺️ Open in Google Maps: {maps_link if maps_link else "Location link not available"}
-
-📝 Your Grievance Details:
-{body}
-
-🔍 Track Your Grievance Status:
-You can track real-time status updates and official resolution progress directly on the CivicFlow AI portal:
-https://civicflow-ai-b2144.web.app/
-
-Thank you for reporting this issue and helping keep our community safe.
-
--- CivicFlow AI Automated Grievance System
-"""
-                ok_cit, err_cit = send_email(
-                    c_clean,
-                    "Grievance Submitted Successfully — CivicFlow AI",
-                    citizen_body,
-                    attachment_tuples
-                )
-                if ok_cit:
-                    sent_count += 1
-                elif not last_error:
-                    last_error = err_cit
+        for rcpt in recipients:
+            ok, err_msg = send_email(
+                rcpt,
+                "New Civic Grievance Report",
+                full_body,
+                attachment_tuples
+            )
+            if ok:
+                sent_count += 1
+            else:
+                last_error = err_msg
 
         is_sent = sent_count > 0
         return jsonify({
