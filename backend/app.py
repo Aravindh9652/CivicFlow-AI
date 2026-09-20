@@ -41,14 +41,19 @@ FIREBASE_API_KEY = os.getenv("FIREBASE_API_KEY", "AIzaSyCDFUc8TFbhnSlL5l1wgocwWC
 
 # ---------------- EMAIL HELPER ----------------
 def send_email(to_email, subject, body, attachments=None):
-    if not SENDER_EMAIL or not SENDER_PASSWORD:
-        print("Notice: SENDER_EMAIL or SENDER_PASSWORD not configured. Skipping SMTP email notification.")
-        return False
+    sender = os.getenv("SENDER_EMAIL") or SENDER_EMAIL or "civicflow.grievance.ai@gmail.com"
+    password = (os.getenv("SENDER_PASSWORD") or SENDER_PASSWORD or "").strip()
+
+    if not sender or not password:
+        err_msg = f"SENDER_PASSWORD is empty or missing (sender={sender})"
+        print("Notice:", err_msg)
+        return False, err_msg
+
     try:
         msg = EmailMessage()
-        msg["From"] = f"CivicFlow AI Support <{SENDER_EMAIL}>"
+        msg["From"] = f"CivicFlow AI Support <{sender}>"
         msg["To"] = to_email
-        msg["Reply-To"] = SENDER_EMAIL
+        msg["Reply-To"] = sender
         msg["Subject"] = subject
         msg.set_content(body)
 
@@ -68,12 +73,13 @@ def send_email(to_email, subject, body, attachments=None):
                         print("Attachment read notice:", fe)
 
         with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=10) as server:
-            server.login(SENDER_EMAIL, SENDER_PASSWORD)
+            server.login(sender, password)
             server.send_message(msg)
-        return True
+        return True, "OK"
     except Exception as err:
-        print("SMTP dispatch notice (grievance persisted):", err)
-        return False
+        err_detail = f"SMTP Error: {str(err)}"
+        print("SMTP dispatch notice:", err_detail)
+        return False, err_detail
 
 
 def _gemini_prompt(user_message: str, city: str) -> str:
@@ -508,8 +514,9 @@ Longitude: {longitude if longitude else "N/A"}
 """
 
         sent_count = 0
+        last_error = ""
         for rcpt in recipients:
-            ok = send_email(
+            ok, err_msg = send_email(
                 rcpt,
                 "New Civic Grievance Report",
                 full_body,
@@ -517,12 +524,15 @@ Longitude: {longitude if longitude else "N/A"}
             )
             if ok:
                 sent_count += 1
+            else:
+                last_error = err_msg
 
         is_sent = sent_count > 0
         return jsonify({
-            "status": "Mail sent successfully" if is_sent else "Mail notification bypassed (check SENDER_PASSWORD on Render)",
+            "status": f"Mail sent successfully to {sent_count} recipient(s)" if is_sent else f"Mail notice: {last_error}",
             "sent": is_sent,
-            "recipientsCount": sent_count
+            "recipientsCount": sent_count,
+            "errorDetail": last_error if not is_sent else None
         })
 
     except Exception as e:
