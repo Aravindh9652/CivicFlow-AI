@@ -661,7 +661,7 @@ function getDeviceId() {
 
   const sendEmail = async () => {
     setLoading(true);
-    const safetyTimer = setTimeout(() => setLoading(false), 8000);
+    const safetyTimer = setTimeout(() => setLoading(false), 30000);
 
     try {
       const payload = {
@@ -690,7 +690,7 @@ function getDeviceId() {
         if (image) formData.append("image", image);
 
         const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 5000);
+        const timer = setTimeout(() => controller.abort(), 25000);
 
         const res = await fetch(`${API_URL}/send-email`, {
           method: "POST",
