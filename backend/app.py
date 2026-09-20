@@ -307,6 +307,71 @@ def _analyze(user_message: str, city: str, image_path: str | None = None, image_
     return result
 
 
+# ---------------- EMAIL HELPER ----------------
+def send_email(to_email, subject, body, attachments=None):
+    sender = os.getenv("SENDER_EMAIL") or SENDER_EMAIL or "civicflow.grievance.ai@gmail.com"
+    password = (os.getenv("SENDER_PASSWORD") or SENDER_PASSWORD or "").strip()
+
+    if not sender or not password:
+        err_msg = f"SENDER_PASSWORD is empty or missing (sender={sender})"
+        print("Notice:", err_msg)
+        return False, err_msg
+
+    try:
+        msg = EmailMessage()
+        msg["From"] = f"CivicFlow AI Support <{sender}>"
+        msg["To"] = to_email
+        msg["Reply-To"] = sender
+        msg["Subject"] = subject
+        msg.set_content(body)
+
+        if attachments:
+            for item in attachments:
+                fname, fdata = None, None
+                if isinstance(item, tuple):
+                    fname, fdata = item
+                elif hasattr(item, "filename") and item.filename:
+                    fname = item.filename
+                    try:
+                        item.seek(0)
+                        fdata = item.read()
+                    except Exception:
+                        fdata = None
+
+                if fname and fdata:
+                    try:
+                        msg.add_attachment(
+                            fdata,
+                            maintype="application",
+                            subtype="octet-stream",
+                            filename=fname
+                        )
+                    except Exception as fe:
+                        print("Attachment read notice:", fe)
+
+        try:
+            with IPv4SMTP("smtp.gmail.com", 587, timeout=12) as server:
+                server.ehlo("gmail.com")
+                server.starttls()
+                server.login(sender, password)
+                server.send_message(msg)
+            return True, "OK"
+        except Exception as e1:
+            try:
+                with IPv4SMTP_SSL("smtp.gmail.com", 465, timeout=12) as server:
+                    server.login(sender, password)
+                    server.send_message(msg)
+                return True, "OK"
+            except Exception as e2:
+                err_detail = f"SMTP Error (587: {e1} | 465: {e2})"
+                print("SMTP dispatch notice:", err_detail)
+                return False, err_detail
+    except Exception as err:
+        err_detail = f"Email Prep Error: {str(err)}"
+        print("SMTP dispatch notice:", err_detail)
+        return False, err_detail
+
+
 # ---------------- AI ANALYSIS ----------------
 @app.route("/chat", methods=["POST"])
 def chat():
@@ -506,25 +571,30 @@ def send_mail_api():
         latitude = request.form.get("latitude", "").strip()
         longitude = request.form.get("longitude", "").strip()
         citizen_email = request.form.get("citizen_email", "").strip()
-        attachments = request.files.getlist("image")
+        raw_attachments = request.files.getlist("image")
 
         if not body:
             return jsonify({"error": "Mail body missing"}), 400
 
-        # Build list of recipient addresses: AUTHORITY_EMAIL + citizen_email
-        recipients = [AUTHORITY_EMAIL]
-        if citizen_email and "@" in citizen_email:
-            c_clean = citizen_email.lower()
-            if not any(r.lower() == c_clean for r in recipients):
-                recipients.append(citizen_email)
+        # Buffer attachments into memory tuples so both emails receive the photo attachment
+        attachment_tuples = []
+        if raw_attachments:
+            for f in raw_attachments:
+                if f and f.filename:
+                    try:
+                        f.seek(0)
+                        f_bytes = f.read()
+                        if f_bytes:
+                            attachment_tuples.append((f.filename, f_bytes))
+                    except Exception as fe:
+                        print("Attachment buffer notice:", fe)
 
         # ✅ Google Maps clickable link
         maps_link = ""
         if latitude and longitude:
             maps_link = f"https://www.google.com/maps?q={latitude},{longitude}"
 
-        full_body = f"""
-CIVIC GRIEVANCE REPORT
+        authority_body = f"""CIVIC GRIEVANCE REPORT
 
 📍 Detailed Location:
 {detailed_location if detailed_location else "Not provided"}
@@ -544,17 +614,55 @@ Longitude: {longitude if longitude else "N/A"}
 
         sent_count = 0
         last_error = ""
-        for rcpt in recipients:
-            ok, err_msg = send_email(
-                rcpt,
-                "New Civic Grievance Report",
-                full_body,
-                attachments
-            )
-            if ok:
-                sent_count += 1
-            else:
-                last_error = err_msg
+
+        # 1. Send Official Grievance Report to Authority (civicflow.grievance.ai@gmail.com)
+        ok_auth, err_auth = send_email(
+            AUTHORITY_EMAIL,
+            "New Civic Grievance Report",
+            authority_body,
+            attachment_tuples
+        )
+        if ok_auth:
+            sent_count += 1
+        else:
+            last_error = err_auth
+
+        # 2. Send Citizen Confirmation & Status Tracking Email to Citizen Account
+        if citizen_email and "@" in citizen_email:
+            c_clean = citizen_email.lower().strip()
+            if c_clean != AUTHORITY_EMAIL.lower().strip():
+                citizen_body = f"""GRIEVANCE SUBMISSION CONFIRMATION — CIVICFLOW AI
+
+Dear Citizen,
+
+Your civic grievance report has been successfully submitted and logged into the CivicFlow AI system for department action.
+
+✅ Submission Status: Submitted
+📍 Location: {detailed_location if detailed_location else "Captured via GPS"}
+🧭 Coordinates: Lat: {latitude if latitude else "N/A"} | Lng: {longitude if longitude else "N/A"}
+🗺️ Open in Google Maps: {maps_link if maps_link else "Location link not available"}
+
+📝 Your Grievance Details:
+{body}
+
+🔍 Track Your Grievance Status:
+You can track real-time status updates and official resolution progress directly on the CivicFlow AI portal:
+https://civicflow-ai-b2144.web.app/
+
+Thank you for reporting this issue and helping keep our community safe.
+
+-- CivicFlow AI Automated Grievance System
+"""
+                ok_cit, err_cit = send_email(
+                    c_clean,
+                    "Grievance Submitted Successfully — CivicFlow AI",
+                    citizen_body,
+                    attachment_tuples
+                )
+                if ok_cit:
+                    sent_count += 1
+                elif not last_error:
+                    last_error = err_cit
 
         is_sent = sent_count > 0
         return jsonify({
