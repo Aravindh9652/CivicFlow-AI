@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import os, json, smtplib, tempfile, socket
+import os, json, smtplib, tempfile, socket, requests
 from email.message import EmailMessage
 from dotenv import load_dotenv
 import google.generativeai as genai
@@ -39,6 +39,22 @@ FIREBASE_API_KEY = os.getenv("FIREBASE_API_KEY", "AIzaSyCDFUc8TFbhnSlL5l1wgocwWC
 # Same email for all departments (hackathon demo)
 # AUTHORITY_EMAIL imported from civic_intelligence (env-overridable)
 
+# ---------------- IPV4 SMTP HELPERS (FOR RENDER / CLOUD HOSTING) ----------------
+class IPv4SMTP(smtplib.SMTP):
+    """SMTP client that forces IPv4 connections to bypass cloud IPv6 routing blocks."""
+    def _get_socket(self, host, port, timeout):
+        addrs = socket.getaddrinfo(host, port, socket.AF_INET, socket.SOCK_STREAM)
+        ip = addrs[0][4][0]
+        return socket.create_connection((ip, port), timeout, self.source_address)
+
+class IPv4SMTP_SSL(smtplib.SMTP_SSL):
+    """SMTP_SSL client that forces IPv4 connections to bypass cloud IPv6 routing blocks."""
+    def _get_socket(self, host, port, timeout):
+        addrs = socket.getaddrinfo(host, port, socket.AF_INET, socket.SOCK_STREAM)
+        ip = addrs[0][4][0]
+        new_socket = socket.create_connection((ip, port), timeout, self.source_address)
+        return self.context.wrap_socket(new_socket, server_hostname=host)
+
 # ---------------- EMAIL HELPER ----------------
 def send_email(to_email, subject, body, attachments=None):
     sender = os.getenv("SENDER_EMAIL") or SENDER_EMAIL or "civicflow.grievance.ai@gmail.com"
@@ -72,17 +88,8 @@ def send_email(to_email, subject, body, attachments=None):
                     except Exception as fe:
                         print("Attachment read notice:", fe)
 
-        # Safely resolve to IPv4 address to bypass cloud container IPv6 routing issues
-        smtp_host = "smtp.gmail.com"
         try:
-            addrs = socket.getaddrinfo("smtp.gmail.com", 587, socket.AF_INET, socket.SOCK_STREAM)
-            if addrs and addrs[0] and addrs[0][4]:
-                smtp_host = addrs[0][4][0]
-        except Exception:
-            smtp_host = "smtp.gmail.com"
-
-        try:
-            with smtplib.SMTP(smtp_host, 587, timeout=12) as server:
+            with IPv4SMTP("smtp.gmail.com", 587, timeout=12) as server:
                 server.ehlo("gmail.com")
                 server.starttls()
                 server.login(sender, password)
@@ -90,7 +97,7 @@ def send_email(to_email, subject, body, attachments=None):
             return True, "OK"
         except Exception as e1:
             try:
-                with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=12) as server:
+                with IPv4SMTP_SSL("smtp.gmail.com", 465, timeout=12) as server:
                     server.login(sender, password)
                     server.send_message(msg)
                 return True, "OK"
