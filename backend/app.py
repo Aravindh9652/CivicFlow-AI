@@ -413,36 +413,67 @@ def send_email(to_email, subject, body, attachments=None):
 @app.route("/send-email", methods=["POST"])
 def send_mail_api():
     try:
-        json_data = request.get_json(silent=True) or {}
-        body = (request.form.get("body") or request.form.get("draft_email") or json_data.get("body") or json_data.get("draft_email") or "").strip()
-        detailed_location = (request.form.get("detailed_location") or json_data.get("detailed_location") or "").strip()
-        latitude = (request.form.get("latitude") or json_data.get("latitude") or "").strip()
-        longitude = (request.form.get("longitude") or json_data.get("longitude") or "").strip()
-        citizen_email = (request.form.get("citizen_email") or json_data.get("citizen_email") or "").strip()
-        
+        body = ""
+        detailed_location = ""
+        latitude = ""
+        longitude = ""
+        citizen_email = ""
         attachment_bytes = []
-        if request.files:
-            for file_item in request.files.getlist("image"):
-                if file_item and file_item.filename:
-                    try:
-                        file_item.seek(0)
-                        content = file_item.read()
-                        if content:
-                            attachment_bytes.append((file_item.filename, content))
-                    except Exception as fe:
-                        print("Attachment read notice:", fe)
+
+        # 1. Try form data
+        try:
+            if request.form:
+                body = request.form.get("body") or request.form.get("draft_email") or ""
+                detailed_location = request.form.get("detailed_location") or ""
+                latitude = request.form.get("latitude") or ""
+                longitude = request.form.get("longitude") or ""
+                citizen_email = request.form.get("citizen_email") or ""
+        except Exception as ef:
+            print("Form parse notice:", ef)
+
+        # 2. Try JSON data if body is still empty
+        if not body:
+            try:
+                j = request.get_json(silent=True) or {}
+                if isinstance(j, dict):
+                    body = j.get("body") or j.get("draft_email") or ""
+                    detailed_location = detailed_location or j.get("detailed_location") or ""
+                    latitude = latitude or j.get("latitude") or ""
+                    longitude = longitude or j.get("longitude") or ""
+                    citizen_email = citizen_email or j.get("citizen_email") or ""
+            except Exception as ej:
+                print("JSON parse notice:", ej)
+
+        # 3. Try files
+        try:
+            if request.files and "image" in request.files:
+                for file_item in request.files.getlist("image"):
+                    if file_item and getattr(file_item, "filename", None):
+                        try:
+                            file_item.seek(0)
+                            content = file_item.read()
+                            if content:
+                                attachment_bytes.append((file_item.filename, content))
+                        except Exception as fe:
+                            print("Attachment read notice:", fe)
+        except Exception as ex_files:
+            print("Files check notice:", ex_files)
+
+        body = str(body).strip()
+        detailed_location = str(detailed_location).strip()
+        latitude = str(latitude).strip()
+        longitude = str(longitude).strip()
+        citizen_email = str(citizen_email).strip()
 
         if not body:
             return jsonify({"error": "Mail body missing"}), 400
 
-        # Build list of recipient addresses: AUTHORITY_EMAIL + citizen_email
-        recipients = [AUTHORITY_EMAIL]
+        recipients = [(os.getenv("AUTHORITY_EMAIL") or AUTHORITY_EMAIL or "civicflow.grievance.ai@gmail.com").strip()]
         if citizen_email and "@" in citizen_email:
             c_clean = citizen_email.lower().strip()
             if not any(r.lower() == c_clean for r in recipients):
                 recipients.append(c_clean)
 
-        # ✅ Google Maps clickable link
         maps_link = ""
         if latitude and longitude:
             maps_link = f"https://www.google.com/maps?q={latitude},{longitude}"
@@ -487,6 +518,7 @@ Longitude: {longitude if longitude else "N/A"}
         })
 
     except Exception as e:
+        print("send_mail_api top exception:", e)
         return jsonify({"error": str(e)}), 500
 
 
