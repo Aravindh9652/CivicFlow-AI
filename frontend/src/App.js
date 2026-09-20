@@ -374,6 +374,8 @@ function getDeviceId() {
 
   const logout = async () => {
     await signOut(auth);
+    setGrievances([]);
+    setAllGrievances([]);
     setPage(0);
     setProblem("");
     setAiData(null);
@@ -383,6 +385,10 @@ function getDeviceId() {
     setDuplicates([]);
     setSelectedGrievanceId(null);
     setAuthError("");
+    setEmail("");
+    setPassword("");
+    setName("");
+    setPhone("");
   };
 
   // eslint-disable-next-line no-unused-vars
@@ -571,8 +577,9 @@ function getDeviceId() {
     const effectiveAi = aiData || classifyLocal(problem, city);
 
     const devId = getDeviceId();
-    const uid = user?.uid || devId;
-    const uemail = user?.email || email || "";
+    const isUserLoggedIn = !!user;
+    const uid = isUserLoggedIn ? user.uid : devId;
+    const uemail = isUserLoggedIn ? (user.email || "").toLowerCase() : (email || "").trim().toLowerCase();
     const uname = name || user?.displayName || (uemail ? uemail.split("@")[0] : "Citizen");
     const slaMins = (slaMinutes && slaMinutes[effectiveAi?.severity]) || SLA_DEFAULT[effectiveAi?.severity] || SLA_DEFAULT.Medium;
     const nowMs = Date.now();
@@ -635,8 +642,18 @@ function getDeviceId() {
       createdItem = { id: fallbackId, ...docData, createdAt: new Date() };
     }
 
-    // Optimistically update local citizen & admin state so it displays immediately
-    setGrievances((prev) => [createdItem, ...prev.filter((g) => g.id !== createdItem.id)]);
+    // Only update local citizen grievances state if complaint belongs to active session
+    const currentMail = user?.email?.toLowerCase() || "";
+    const currentUid = user?.uid || "";
+    const matchesUser = currentUid
+      ? (createdItem.userId === currentUid || createdItem.citizenId === currentUid)
+      : currentMail
+      ? (createdItem.citizenEmail?.toLowerCase() === currentMail)
+      : (createdItem.deviceId === devId);
+
+    if (matchesUser) {
+      setGrievances((prev) => [createdItem, ...prev.filter((g) => g.id !== createdItem.id)]);
+    }
     setAllGrievances((prev) => [createdItem, ...prev.filter((g) => g.id !== createdItem.id)]);
 
     return createdItem;
