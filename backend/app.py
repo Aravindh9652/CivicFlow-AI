@@ -307,6 +307,45 @@ def _analyze(user_message: str, city: str, image_path: str | None = None, image_
     return result
 
 
+# ---------------- IPV4 SMTP HELPERS (FOR RENDER / CLOUD HOSTING) ----------------
+def create_ipv4_connection(host, port, timeout=5):
+    """Try connecting to resolved IPv4 addresses sequentially with short timeout to prevent hangs."""
+    err = None
+    try:
+        addrs = socket.getaddrinfo(host, port, socket.AF_INET, socket.SOCK_STREAM)
+    except Exception as e:
+        addrs = []
+        err = e
+
+    for res in addrs:
+        af, socktype, proto, canonname, sa = res
+        sock = None
+        try:
+            sock = socket.socket(af, socktype, proto)
+            if timeout is not None:
+                sock.settimeout(timeout)
+            sock.connect(sa)
+            return sock
+        except socket.error as e:
+            err = e
+            if sock is not None:
+                sock.close()
+    if err is not None:
+        raise err
+    raise socket.error(f"Could not connect to {host}:{port} via IPv4")
+
+class IPv4SMTP(smtplib.SMTP):
+    """SMTP client forcing IPv4 connections to bypass cloud container IPv6 blocks."""
+    def _get_socket(self, host, port, timeout):
+        return create_ipv4_connection(host, port, timeout)
+
+class IPv4SMTP_SSL(smtplib.SMTP_SSL):
+    """SMTP_SSL client forcing IPv4 connections to bypass cloud container IPv6 blocks."""
+    def _get_socket(self, host, port, timeout):
+        new_sock = create_ipv4_connection(host, port, timeout)
+        return self.context.wrap_socket(new_sock, server_hostname=host)
+
+
 # ---------------- EMAIL HELPER ----------------
 def send_email(to_email, subject, body, attachments=None):
     sender = os.getenv("SENDER_EMAIL") or SENDER_EMAIL or "civicflow.grievance.ai@gmail.com"
@@ -320,7 +359,10 @@ def send_email(to_email, subject, body, attachments=None):
     try:
         msg = EmailMessage()
         msg["From"] = f"CivicFlow AI Support <{sender}>"
-        msg["To"] = to_email
+        if isinstance(to_email, (list, tuple, set)):
+            msg["To"] = ", ".join(list(to_email))
+        else:
+            msg["To"] = str(to_email)
         msg["Reply-To"] = sender
         msg["Subject"] = subject
         msg.set_content(body)
@@ -350,7 +392,7 @@ def send_email(to_email, subject, body, attachments=None):
                         print("Attachment read notice:", fe)
 
         try:
-            with IPv4SMTP("smtp.gmail.com", 587, timeout=12) as server:
+            with IPv4SMTP("smtp.gmail.com", 587, timeout=6) as server:
                 server.ehlo("gmail.com")
                 server.starttls()
                 server.login(sender, password)
@@ -358,7 +400,7 @@ def send_email(to_email, subject, body, attachments=None):
             return True, "OK"
         except Exception as e1:
             try:
-                with IPv4SMTP_SSL("smtp.gmail.com", 465, timeout=12) as server:
+                with IPv4SMTP_SSL("smtp.gmail.com", 465, timeout=6) as server:
                     server.login(sender, password)
                     server.send_message(msg)
                 return True, "OK"
@@ -617,20 +659,16 @@ Longitude: {longitude if longitude else "N/A"}
 -- Sent via CivicFlow AI (Gemini + local open-source first-pass)
 """
 
-        sent_count = 0
-        last_error = ""
-
-        for rcpt in recipients:
-            ok, err_msg = send_email(
-                rcpt,
-                "New Civic Grievance Report",
-                full_body,
-                attachment_tuples
-            )
-            if ok:
-                sent_count += 1
-            else:
-                last_error = err_msg
+        ok, err_msg = send_email(
+            recipients,
+            "New Civic Grievance Report",
+            full_body,
+            attachment_tuples
+        )
+        if ok:
+            sent_count = len(recipients)
+        else:
+            last_error = err_msg
 
         is_sent = sent_count > 0
         return jsonify({
