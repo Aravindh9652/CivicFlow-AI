@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import os, json, smtplib, tempfile
+import os, json, smtplib, tempfile, socket
 from email.message import EmailMessage
 from dotenv import load_dotenv
 import google.generativeai as genai
