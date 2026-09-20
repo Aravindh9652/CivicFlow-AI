@@ -49,13 +49,7 @@ def send_email(to_email, subject, body, attachments=None):
         print("Notice:", err_msg)
         return False, err_msg
 
-    # Force IPv4 socket resolution to bypass cloud container IPv6 route issues
-    original_getaddrinfo = socket.getaddrinfo
-    def getaddrinfo_ipv4(host, port, family=0, type=0, proto=0, flags=0):
-        return original_getaddrinfo(host, port, socket.AF_INET, type, proto, flags)
-
     try:
-        socket.getaddrinfo = getaddrinfo_ipv4
         msg = EmailMessage()
         msg["From"] = f"CivicFlow AI Support <{sender}>"
         msg["To"] = to_email
@@ -78,8 +72,18 @@ def send_email(to_email, subject, body, attachments=None):
                     except Exception as fe:
                         print("Attachment read notice:", fe)
 
+        # Safely resolve to IPv4 address to bypass cloud container IPv6 routing issues
+        smtp_host = "smtp.gmail.com"
         try:
-            with smtplib.SMTP("smtp.gmail.com", 587, timeout=12) as server:
+            addrs = socket.getaddrinfo("smtp.gmail.com", 587, socket.AF_INET, socket.SOCK_STREAM)
+            if addrs and addrs[0] and addrs[0][4]:
+                smtp_host = addrs[0][4][0]
+        except Exception:
+            smtp_host = "smtp.gmail.com"
+
+        try:
+            with smtplib.SMTP(smtp_host, 587, timeout=12) as server:
+                server.ehlo("gmail.com")
                 server.starttls()
                 server.login(sender, password)
                 server.send_message(msg)
@@ -94,8 +98,10 @@ def send_email(to_email, subject, body, attachments=None):
                 err_detail = f"SMTP Error (587: {e1} | 465: {e2})"
                 print("SMTP dispatch notice:", err_detail)
                 return False, err_detail
-    finally:
-        socket.getaddrinfo = original_getaddrinfo
+    except Exception as err:
+        err_detail = f"Email Prep Error: {str(err)}"
+        print("SMTP dispatch notice:", err_detail)
+        return False, err_detail
 
 
 def _gemini_prompt(user_message: str, city: str) -> str:
