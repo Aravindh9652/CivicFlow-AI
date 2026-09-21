@@ -336,7 +336,7 @@ def send_email(to_email, subject, body, attachments=None):
 
     try:
         msg = EmailMessage()
-        msg["From"] = f"CivicFlow AI Support <{sender}>"
+        msg["From"] = sender
         msg["To"] = to_email
         msg["Reply-To"] = sender
         msg["Subject"] = subject
@@ -464,7 +464,11 @@ def send_mail_api():
         if not body:
             return jsonify({"error": "Mail body missing"}), 400
 
-        target_email = "civicflow.grievance.ai@gmail.com"
+        recipients = ["civicflow.grievance.ai@gmail.com"]
+        if citizen_email and "@" in citizen_email:
+            c_clean = citizen_email.lower().strip()
+            if not any(r.lower() == c_clean for r in recipients):
+                recipients.append(c_clean)
 
         maps_link = ""
         if latitude and longitude:
@@ -488,17 +492,22 @@ Complaint:
 -- Sent via CivicFlow AI (Gemini + local open-source first-pass)
 """
 
-        is_sent = send_email(
-            target_email,
-            "New Civic Grievance Report",
-            full_body,
-            attachment_bytes
-        )
+        sent_count = 0
+        for rcpt in recipients:
+            ok = send_email(
+                rcpt,
+                "New Civic Grievance Report",
+                full_body,
+                attachment_bytes
+            )
+            if ok:
+                sent_count += 1
 
+        is_sent = sent_count > 0
         return jsonify({
             "status": "Mail sent successfully" if is_sent else "Mail delivery failed",
             "sent": is_sent,
-            "recipientsCount": 1 if is_sent else 0
+            "recipientsCount": sent_count
         })
 
     except Exception as e:
