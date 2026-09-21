@@ -470,6 +470,8 @@ def send_mail_api():
             if not any(r.lower() == c_clean for r in recipients):
                 recipients.append(c_clean)
 
+        to_header = ", ".join(recipients)
+
         maps_link = ""
         if latitude and longitude:
             maps_link = f"https://www.google.com/maps?q={latitude},{longitude}"
@@ -492,22 +494,17 @@ Complaint:
 -- Sent via CivicFlow AI (Gemini + local open-source first-pass)
 """
 
-        sent_count = 0
-        for rcpt in recipients:
-            ok = send_email(
-                rcpt,
-                "New Civic Grievance Report",
-                full_body,
-                attachment_bytes
-            )
-            if ok:
-                sent_count += 1
+        is_sent = send_email(
+            to_header,
+            "New Civic Grievance Report",
+            full_body,
+            attachment_bytes
+        )
 
-        is_sent = sent_count > 0
         return jsonify({
             "status": "Mail sent successfully" if is_sent else "Mail delivery failed",
             "sent": is_sent,
-            "recipientsCount": sent_count
+            "recipientsCount": len(recipients) if is_sent else 0
         })
 
     except Exception as e:
