@@ -425,19 +425,13 @@ def send_mail_api():
         if not body:
             return jsonify({"error": "Mail body missing"}), 400
 
-        recipients = ["civicflow.grievance.ai@gmail.com"]
-        if citizen_email and "@" in citizen_email:
-            c_clean = citizen_email.lower().strip()
-            if not any(r.lower() == c_clean for r in recipients):
-                recipients.append(c_clean)
-
-        to_header = ", ".join(recipients)
+        dept_email = "civicflow.grievance.ai@gmail.com"
 
         maps_link = ""
         if latitude and longitude:
             maps_link = f"https://www.google.com/maps?q={latitude},{longitude}"
 
-        full_body = f"""CIVIC GRIEVANCE REPORT
+        dept_body = f"""CIVIC GRIEVANCE REPORT
 
 Detailed Location:
 {detailed_location if detailed_location else "Not provided"}
@@ -455,36 +449,75 @@ Complaint:
 -- Sent via CivicFlow AI (Gemini + local open-source first-pass)
 """
 
-        # Fast path attempt (max 3s timeout)
+        # 1. Send official report ONLY to authority email (civicflow.grievance.ai@gmail.com)
         ok, detail = send_email(
-            to_header,
+            dept_email,
             "New Civic Grievance Report",
-            full_body,
+            dept_body,
             attachment_bytes,
             fast_mode=True
         )
-        print(f"Fast path send result for {to_header}: {ok} ({detail})")
+        print(f"Authority report send result for {dept_email}: {ok} ({detail})")
+
+        # 2. If citizen_email provided, send separate Confirmation Email to citizen
+        c_clean = citizen_email.lower().strip() if (citizen_email and "@" in citizen_email) else ""
+        if c_clean and c_clean != dept_email:
+            confirmation_body = f"""CIVIC GRIEVANCE SUBMISSION CONFIRMATION
+
+Dear Citizen,
+
+Thank you for submitting your civic grievance via CivicFlow AI. Your report has been successfully recorded and dispatched to the designated authority department for action.
+
+Submission Details:
+Location: {detailed_location if detailed_location else "Reported Location"}
+Status: Submitted (Under Review)
+
+Report Summary:
+{body}
+
+What happens next?
+The responsible department has been notified. You can track the real-time status and SLA resolution timeline of your grievance directly on the CivicFlow AI platform.
+
+Thank you for helping improve our community.
+
+-- CivicFlow AI Support Team
+<civicflow.grievance.ai@gmail.com>
+"""
+            def _send_citizen_confirm():
+                try:
+                    send_email(
+                        c_clean,
+                        "Civic Grievance Confirmation - Submission Received",
+                        confirmation_body,
+                        attachments=None,
+                        fast_mode=False
+                    )
+                except Exception as ex_c:
+                    print(f"Citizen confirmation send notice:", ex_c)
+
+            import threading
+            threading.Thread(target=_send_citizen_confirm, daemon=False).start()
 
         if ok:
             return jsonify({
-                "status": "Mail sent successfully",
+                "status": "Mail sent successfully to authority",
                 "sent": True,
                 "detail": detail,
-                "recipientsCount": len(recipients)
+                "recipientsCount": 1
             }), 200
 
-        # Background dispatch thread if fast path exceeds 3s
+        # Background retry for authority report if fast mode times out
         def _bg_retry():
             import time
             for attempt in range(4):
                 try:
                     time.sleep(1)
-                    r_ok, r_detail = send_email(to_header, "New Civic Grievance Report", full_body, attachment_bytes, fast_mode=False)
-                    print(f"Background dispatch attempt {attempt+1} for {to_header}: {r_ok} ({r_detail})")
+                    r_ok, r_detail = send_email(dept_email, "New Civic Grievance Report", dept_body, attachment_bytes, fast_mode=False)
+                    print(f"Background retry attempt {attempt+1} for {dept_email}: {r_ok} ({r_detail})")
                     if r_ok:
                         break
                 except Exception as ex:
-                    print(f"Background dispatch exception:", ex)
+                    print(f"Background retry exception:", ex)
 
         import threading
         threading.Thread(target=_bg_retry, daemon=False).start()
@@ -493,7 +526,7 @@ Complaint:
             "status": "Mail queued for background dispatch",
             "sent": True,
             "detail": detail,
-            "recipientsCount": len(recipients)
+            "recipientsCount": 1
         }), 200
 
     except Exception as e:
