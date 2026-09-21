@@ -378,6 +378,13 @@ def send_mail_api():
             ""
         ).strip()
 
+        city = (
+            request.form.get("city") or
+            req_json.get("city") or
+            request.args.get("city") or
+            ""
+        ).strip()
+
         detailed_location = (
             request.form.get("detailed_location") or
             req_json.get("detailed_location") or
@@ -427,7 +434,7 @@ def send_mail_api():
 
         authority_email = "civicflow.grievance.ai@gmail.com"
 
-        loc_display = detailed_location or city or "Reported Area"
+        loc_display = detailed_location or city or "Vijayawada / Reported Area"
         lat_display = latitude if latitude and latitude != "N/A" else "GPS Captured"
         lng_display = longitude if longitude and longitude != "N/A" else "GPS Captured"
 

@@ -685,7 +685,8 @@ function getDeviceId() {
         const formData = new FormData();
         formData.append("body", effectiveDraft);
         formData.append("draft_email", effectiveDraft);
-        formData.append("detailed_location", detailedLocation);
+        formData.append("city", city || "");
+        formData.append("detailed_location", detailedLocation || city || "Vijayawada");
         formData.append("latitude", coords?.lat || "");
         formData.append("longitude", coords?.lng || "");
         if (uemail) formData.append("citizen_email", uemail);
