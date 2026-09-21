@@ -32,83 +32,9 @@ if os.getenv("GEMINI_API_KEY"):
 GEMINI_MODEL = "models/gemini-flash-latest"
 
 # ---------------- EMAIL & FIREBASE CONFIG ----------------
-SENDER_EMAIL = os.getenv("SENDER_EMAIL", "civicflow.grievance.ai@gmail.com")
-SENDER_PASSWORD = os.getenv("SENDER_PASSWORD")
+SENDER_EMAIL = (os.getenv("SENDER_EMAIL") or "civicflow.grievance.ai@gmail.com").strip()
+SENDER_PASSWORD = (os.getenv("SENDER_PASSWORD") or "kocltewegfkktmfm").strip()
 FIREBASE_API_KEY = os.getenv("FIREBASE_API_KEY", "AIzaSyCDFUc8TFbhnSlL5l1wgocwWCE6xxN4yl8")
-
-# Same email for all departments (hackathon demo)
-# AUTHORITY_EMAIL imported from civic_intelligence (env-overridable)
-
-# ---------------- IPV4 SMTP HELPERS (FOR RENDER / CLOUD HOSTING) ----------------
-class IPv4SMTP(smtplib.SMTP):
-    """SMTP client that forces IPv4 connections to bypass cloud IPv6 routing blocks."""
-    def _get_socket(self, host, port, timeout):
-        addrs = socket.getaddrinfo(host, port, socket.AF_INET, socket.SOCK_STREAM)
-        ip = addrs[0][4][0]
-        return socket.create_connection((ip, port), timeout, self.source_address)
-
-class IPv4SMTP_SSL(smtplib.SMTP_SSL):
-    """SMTP_SSL client that forces IPv4 connections to bypass cloud IPv6 routing blocks."""
-    def _get_socket(self, host, port, timeout):
-        addrs = socket.getaddrinfo(host, port, socket.AF_INET, socket.SOCK_STREAM)
-        ip = addrs[0][4][0]
-        new_socket = socket.create_connection((ip, port), timeout, self.source_address)
-        return self.context.wrap_socket(new_socket, server_hostname=host)
-
-# ---------------- EMAIL HELPER ----------------
-def send_email(to_email, subject, body, attachments=None):
-    sender = os.getenv("SENDER_EMAIL") or SENDER_EMAIL or "civicflow.grievance.ai@gmail.com"
-    password = (os.getenv("SENDER_PASSWORD") or SENDER_PASSWORD or "").strip()
-
-    if not sender or not password:
-        err_msg = f"SENDER_PASSWORD is empty or missing (sender={sender})"
-        print("Notice:", err_msg)
-        return False, err_msg
-
-    try:
-        msg = EmailMessage()
-        msg["From"] = f"CivicFlow AI Support <{sender}>"
-        msg["To"] = to_email
-        msg["Reply-To"] = sender
-        msg["Subject"] = subject
-        msg.set_content(body)
-
-        if attachments:
-            for file in attachments:
-                if file and file.filename:
-                    try:
-                        file_data = file.read()
-                        if file_data:
-                            msg.add_attachment(
-                                file_data,
-                                maintype="application",
-                                subtype="octet-stream",
-                                filename=file.filename
-                            )
-                    except Exception as fe:
-                        print("Attachment read notice:", fe)
-
-        try:
-            with IPv4SMTP("smtp.gmail.com", 587, timeout=12) as server:
-                server.ehlo("gmail.com")
-                server.starttls()
-                server.login(sender, password)
-                server.send_message(msg)
-            return True, "OK"
-        except Exception as e1:
-            try:
-                with IPv4SMTP_SSL("smtp.gmail.com", 465, timeout=12) as server:
-                    server.login(sender, password)
-                    server.send_message(msg)
-                return True, "OK"
-            except Exception as e2:
-                err_detail = f"SMTP Error (587: {e1} | 465: {e2})"
-                print("SMTP dispatch notice:", err_detail)
-                return False, err_detail
-    except Exception as err:
-        err_detail = f"Email Prep Error: {str(err)}"
-        print("SMTP dispatch notice:", err_detail)
-        return False, err_detail
 
 
 def _gemini_prompt(user_message: str, city: str) -> str:
@@ -341,8 +267,8 @@ socket.getaddrinfo = _ipv4_getaddrinfo
 
 # ---------------- EMAIL HELPER ----------------
 def send_email(to_email, subject, body, attachments=None):
-    sender = "civicflow.grievance.ai@gmail.com"
-    password = "kocltewegfkktmfm"
+    sender = (os.getenv("SENDER_EMAIL") or SENDER_EMAIL or "civicflow.grievance.ai@gmail.com").strip()
+    password = (os.getenv("SENDER_PASSWORD") or SENDER_PASSWORD or "kocltewegfkktmfm").strip()
 
     recipients = [r.strip() for r in to_email.split(",") if r.strip()] if isinstance(to_email, str) else to_email
 
@@ -507,26 +433,26 @@ Complaint:
 -- Sent via CivicFlow AI (Gemini + local open-source first-pass)
 """
 
-        def _bg_send():
-            try:
-                ok, detail = send_email(
-                    to_header,
-                    "New Civic Grievance Report",
-                    full_body,
-                    attachment_bytes
-                )
-                print(f"Background send result for {to_header}: {ok} ({detail})")
-            except Exception as ex:
-                print(f"Background send error for {to_header}:", ex)
+        ok, detail = send_email(
+            to_header,
+            "New Civic Grievance Report",
+            full_body,
+            attachment_bytes
+        )
+        print(f"Send result for {to_header}: {ok} ({detail})")
 
-        import threading
-        threading.Thread(target=_bg_send, daemon=True).start()
-
-        return jsonify({
-            "status": "Mail sent successfully",
-            "sent": True,
-            "recipientsCount": len(recipients)
-        })
+        if ok:
+            return jsonify({
+                "status": "Mail sent successfully",
+                "sent": True,
+                "detail": detail,
+                "recipientsCount": len(recipients)
+            }), 200
+        else:
+            return jsonify({
+                "error": f"Failed to send email: {detail}",
+                "sent": False
+            }), 500
 
     except Exception as e:
         print("send_mail_api top exception:", e)

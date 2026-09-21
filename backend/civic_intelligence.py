@@ -336,7 +336,7 @@ def _draft_mail(
     if department == "Electricity":
         dept_title = "Executive Engineer / Assistant Engineer, Operations, Electricity Distribution Department"
     elif department == "Municipal":
-        dept_title = "Municipal Commissioner / Executive Officer, Municipal Authority"
+        dept_title = "Municipal Commissioner / Executive Officer, Municipal Administration & Sanitation Department"
     elif department == "Water":
         dept_title = "Superintending Engineer / Executive Engineer, Water Supply & Sanitation Department"
     elif department == "Police":
@@ -345,19 +345,25 @@ def _draft_mail(
         dept_title = "District Medical & Health Officer / Public Health Authority"
 
     flag = "CRITICAL EMERGENCY: " if emergency else ""
-    urgency = "Immediate / Critical" if emergency else "High / Standard Action Required"
+    urgency = "Immediate / Critical" if emergency else "Standard / High Action Required"
 
     return f"""To: {dept_title}
-Subject: {flag}{category} at {city or 'Reported Location'}
+Subject: {flag}{category if category else 'Civic Grievance'} at {city or 'Reported Location'}
 
 Respected Sir/Madam,
 
-I am writing to report a hazardous civic issue requiring official intervention:
+I am writing to formally report a civic grievance requiring urgent administrative intervention and remediation.
 
+Description of Civic Issue:
 {problem}
 
-Location: {city or "Not specified"}
-Urgency: {urgency}
+Location / Jurisdiction: {city or "Not specified"}
+Urgency Level: {urgency}
+
+Request for Action:
+Kindly inspect the specified location at the earliest, dispatch appropriate field personnel, and initiate necessary corrective measures to resolve this issue and safeguard public convenience and safety.
+
+Thanking you.
 
 Yours faithfully,
 Concerned Citizen"""
