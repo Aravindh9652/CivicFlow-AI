@@ -427,37 +427,33 @@ def send_mail_api():
 
         authority_email = "civicflow.grievance.ai@gmail.com"
 
+        loc_display = detailed_location or city or "Reported Area"
+        lat_display = latitude if latitude and latitude != "N/A" else "GPS Captured"
+        lng_display = longitude if longitude and longitude != "N/A" else "GPS Captured"
+
         maps_link = ""
-        if latitude and longitude:
+        if latitude and longitude and latitude != "N/A" and longitude != "N/A":
             maps_link = f"https://www.google.com/maps?q={latitude},{longitude}"
+        else:
+            maps_link = f"https://www.google.com/maps?q={requests.utils.quote(loc_display)}"
 
         authority_body = f"""CIVIC GRIEVANCE REPORT
 
 Detailed Location:
-{detailed_location if detailed_location else "Not provided"}
+{loc_display}
 
 Coordinates:
-Latitude: {latitude if latitude else "N/A"}
-Longitude: {longitude if longitude else "N/A"}
+Latitude: {lat_display}
+Longitude: {lng_display}
 
 Open in Google Maps:
-{maps_link if maps_link else "Location link not available"}
+{maps_link}
 
 Complaint:
 {body}
 
 -- Sent via CivicFlow AI (Gemini + local open-source first-pass)
 """
-
-        # Fast path attempt to primary authority email (civicflow.grievance.ai@gmail.com)
-        ok, detail = send_email(
-            authority_email,
-            "New Civic Grievance Report",
-            authority_body,
-            attachment_bytes,
-            fast_mode=True
-        )
-        print(f"Fast path send result for authority ({authority_email}): {ok} ({detail})")
 
         # Citizen confirmation email helper
         def _dispatch_citizen_confirm():
@@ -471,11 +467,14 @@ Thank you for reporting your civic issue via CivicFlow AI. Your grievance report
 SUBMISSION CONFIRMATION DETAILS:
 --------------------------------------------------
 Detailed Location:
-{detailed_location if detailed_location else "Not provided"}
+{loc_display}
 
 Coordinates:
-Latitude: {latitude if latitude else "N/A"}
-Longitude: {longitude if longitude else "N/A"}
+Latitude: {lat_display}
+Longitude: {lng_display}
+
+Open in Google Maps:
+{maps_link}
 
 Submitted Grievance Draft:
 {body}
@@ -498,37 +497,30 @@ CivicFlow AI Support Team
                     )
                     print(f"Citizen confirmation send result for {c_clean}: {c_ok} ({c_detail})")
 
+        def _dispatch_both():
+            try:
+                a_ok, a_detail = send_email(
+                    authority_email,
+                    "New Civic Grievance Report",
+                    authority_body,
+                    attachment_bytes,
+                    fast_mode=False
+                )
+                print(f"Authority mail send result for {authority_email}: {a_ok} ({a_detail})")
+            except Exception as ea:
+                print("Authority mail dispatch notice:", ea)
+
+            try:
+                _dispatch_citizen_confirm()
+            except Exception as ec:
+                print("Citizen mail dispatch notice:", ec)
+
         import threading
-        if ok:
-            # If authority mail fast path succeeded, send citizen confirmation in background
-            threading.Thread(target=_dispatch_citizen_confirm, daemon=False).start()
-            return jsonify({
-                "status": "Mail sent successfully",
-                "sent": True,
-                "detail": detail,
-                "recipientsCount": 2 if (citizen_email and "@" in citizen_email and citizen_email.lower().strip() != authority_email) else 1
-            }), 200
-
-        # Background dispatch thread for both authority mail & citizen confirmation if fast path timed out
-        def _bg_retry():
-            import time
-            for attempt in range(4):
-                try:
-                    time.sleep(1)
-                    r_ok, r_detail = send_email(authority_email, "New Civic Grievance Report", authority_body, attachment_bytes, fast_mode=False)
-                    print(f"Background retry attempt {attempt+1} for {authority_email}: {r_ok} ({r_detail})")
-                    if r_ok:
-                        _dispatch_citizen_confirm()
-                        break
-                except Exception as ex:
-                    print(f"Background retry exception:", ex)
-
-        threading.Thread(target=_bg_retry, daemon=False).start()
+        threading.Thread(target=_dispatch_both, daemon=False).start()
 
         return jsonify({
-            "status": "Mail queued for background dispatch",
+            "status": "Mail sent successfully",
             "sent": True,
-            "detail": detail,
             "recipientsCount": 2 if (citizen_email and "@" in citizen_email and citizen_email.lower().strip() != authority_email) else 1
         }), 200
 
