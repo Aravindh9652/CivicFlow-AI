@@ -1,6 +1,9 @@
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import os, json, smtplib, tempfile, socket, requests
+import json, smtplib, tempfile, socket, requests
 from email.message import EmailMessage
 from dotenv import load_dotenv
 import google.generativeai as genai
