@@ -362,33 +362,48 @@ def send_email(to_email, subject, body, attachments=None):
 @app.route("/send-email", methods=["GET", "POST"])
 def send_mail_api():
     try:
-        body = ""
-        detailed_location = ""
-        latitude = ""
-        longitude = ""
-        citizen_email = ""
+        req_json = request.get_json(silent=True) if request.is_json else {}
+        if not isinstance(req_json, dict):
+            req_json = {}
+
+        body = (
+            request.form.get("body") or
+            request.form.get("draft_email") or
+            req_json.get("body") or
+            req_json.get("draft_email") or
+            request.args.get("body") or
+            ""
+        ).strip()
+
+        detailed_location = (
+            request.form.get("detailed_location") or
+            req_json.get("detailed_location") or
+            request.args.get("detailed_location") or
+            ""
+        ).strip()
+
+        latitude = (
+            request.form.get("latitude") or
+            req_json.get("latitude") or
+            request.args.get("latitude") or
+            ""
+        ).strip()
+
+        longitude = (
+            request.form.get("longitude") or
+            req_json.get("longitude") or
+            request.args.get("longitude") or
+            ""
+        ).strip()
+
+        citizen_email = (
+            request.form.get("citizen_email") or
+            req_json.get("citizen_email") or
+            request.args.get("citizen_email") or
+            ""
+        ).strip()
+
         attachment_bytes = []
-
-        # Safely parse parameters without triggering Werkzeug form parser crashes
-        data = {}
-        try:
-            if request.is_json:
-                data = request.get_json(silent=True) or {}
-            else:
-                data = dict(request.form) if request.form else {}
-        except Exception as ep:
-            print("Request data parse notice:", ep)
-
-        if not isinstance(data, dict):
-            data = {}
-
-        body = data.get("body") or data.get("draft_email") or request.args.get("body") or ""
-        detailed_location = data.get("detailed_location") or request.args.get("detailed_location") or ""
-        latitude = data.get("latitude") or request.args.get("latitude") or ""
-        longitude = data.get("longitude") or request.args.get("longitude") or ""
-        citizen_email = data.get("citizen_email") or request.args.get("citizen_email") or ""
-
-        # Safely extract files if present
         try:
             files_dict = getattr(request, "files", None)
             if files_dict and "image" in files_dict:
@@ -403,12 +418,6 @@ def send_mail_api():
                             print("Attachment read notice:", fe)
         except Exception as ex_files:
             print("Files check notice:", ex_files)
-
-        body = str(body).strip()
-        detailed_location = str(detailed_location).strip()
-        latitude = str(latitude).strip()
-        longitude = str(longitude).strip()
-        citizen_email = str(citizen_email).strip()
 
         if not body:
             return jsonify({"error": "Mail body missing"}), 400
@@ -443,26 +452,27 @@ Complaint:
 -- Sent via CivicFlow AI (Gemini + local open-source first-pass)
 """
 
-        def _bg_send():
-            try:
-                ok, detail = send_email(
-                    to_header,
-                    "New Civic Grievance Report",
-                    full_body,
-                    attachment_bytes
-                )
-                print(f"Background send result for {to_header}: {ok} ({detail})")
-            except Exception as ex:
-                print(f"Background send error for {to_header}:", ex)
+        ok, detail = send_email(
+            to_header,
+            "New Civic Grievance Report",
+            full_body,
+            attachment_bytes
+        )
+        print(f"Synchronous send result for {to_header}: {ok} ({detail})")
 
-        import threading
-        threading.Thread(target=_bg_send, daemon=False).start()
-
-        return jsonify({
-            "status": "Mail sent successfully",
-            "sent": True,
-            "recipientsCount": len(recipients)
-        }), 200
+        if ok:
+            return jsonify({
+                "status": "Mail sent successfully",
+                "sent": True,
+                "detail": detail,
+                "recipientsCount": len(recipients)
+            }), 200
+        else:
+            return jsonify({
+                "error": f"SMTP dispatch failed: {detail}",
+                "sent": False,
+                "detail": detail
+            }), 500
 
     except Exception as e:
         print("send_mail_api top exception:", e)
