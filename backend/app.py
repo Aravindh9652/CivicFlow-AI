@@ -256,13 +256,13 @@ class IPv4SMTP_SSL(smtplib.SMTP_SSL):
         return self.context.wrap_socket(new_socket, server_hostname=host)
 
 # ---------------- IPV4 DNS RESOLUTION (FOR CLOUD HOSTS) ----------------
-_orig_getaddrinfo = socket.getaddrinfo
-def _ipv4_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
-    if host == "smtp.gmail.com":
-        return _orig_getaddrinfo(host, port, socket.AF_INET, type, proto, flags)
-    return _orig_getaddrinfo(host, port, family, type, proto, flags)
-
-socket.getaddrinfo = _ipv4_getaddrinfo
+if not hasattr(socket, "_orig_getaddrinfo"):
+    socket._orig_getaddrinfo = socket.getaddrinfo
+    def _ipv4_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
+        if host == "smtp.gmail.com":
+            return socket._orig_getaddrinfo(host, port, socket.AF_INET, type, proto, flags)
+        return socket._orig_getaddrinfo(host, port, family, type, proto, flags)
+    socket.getaddrinfo = _ipv4_getaddrinfo
 
 
 # ---------------- EMAIL HELPER ----------------
