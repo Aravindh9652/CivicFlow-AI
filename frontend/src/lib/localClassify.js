@@ -160,7 +160,32 @@ export function classifyLocal(problem, city = "") {
     advice: emergency
       ? `This looks like an emergency routed to ${department}. Call 112 immediately if anyone is in danger. CivicFlow has not contacted emergency services.`
       : `This appears to be a ${department} civic grievance. Include a photo, precise landmark, and GPS.`,
-    draftedMail: `To,\nThe ${department} Authority\n\nSubject: ${emergency ? "EMERGENCY — " : ""}Civic grievance — ${category}\n\n${problem}\n\nLocation / area: ${city || "Not specified"}\n`,
+    draftedMail: `To: ${
+      department === "Electricity"
+        ? "Executive Engineer / Assistant Engineer, Operations, Electricity Distribution Department"
+        : department === "Municipal"
+        ? "Municipal Commissioner / Executive Officer, Municipal Authority"
+        : department === "Water"
+        ? "Superintending Engineer / Executive Engineer, Water Supply & Sanitation Department"
+        : department === "Police"
+        ? "Station House Officer / Inspector of Police, Local Police Department"
+        : department === "Health"
+        ? "District Medical & Health Officer / Public Health Authority"
+        : `${department} Authority`
+    }
+Subject: ${emergency ? "CRITICAL EMERGENCY: " : ""}${category} at ${city || "Reported Location"}
+
+Respected Sir/Madam,
+
+I am writing to report a hazardous civic issue requiring official intervention:
+
+${problem}
+
+Location: ${city || "Not specified"}
+Urgency: ${emergency ? "Immediate / Critical" : "High / Standard Action Required"}
+
+Yours faithfully,
+Concerned Citizen`,
     mailTo: "",
     aiUsed: false,
     aiLayer: "local-open-source-browser",

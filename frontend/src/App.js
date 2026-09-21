@@ -682,7 +682,7 @@ function getDeviceId() {
       try {
         const uemail = user?.email || email || "";
         const formData = new FormData();
-        formData.append("body", mailBody || problem);
+        formData.append("body", mailBody || aiData?.draftedMail || problem);
         formData.append("detailed_location", detailedLocation);
         formData.append("latitude", coords?.lat || "");
         formData.append("longitude", coords?.lng || "");
