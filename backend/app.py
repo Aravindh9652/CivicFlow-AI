@@ -280,15 +280,16 @@ if not hasattr(socket, "_orig_getaddrinfo"):
 
 
 # ---------------- EMAIL HELPER ----------------
-def send_email(to_email, subject, body, attachments=None):
+def send_email(to_email, subject, body, attachments=None, fast_mode=False):
     sender = (os.getenv("SENDER_EMAIL") or SENDER_EMAIL or "civicflow.grievance.ai@gmail.com").strip()
     password = (os.getenv("SENDER_PASSWORD") or SENDER_PASSWORD or "kocltewegfkktmfm").strip()
 
     recipients = [r.strip() for r in to_email.split(",") if r.strip()] if isinstance(to_email, str) else to_email
+    timeout_val = 3 if fast_mode else 8
 
     try:
         msg = EmailMessage()
-        msg["From"] = sender
+        msg["From"] = f"CivicFlow AI Support <{sender}>"
         msg["To"] = ", ".join(recipients)
         msg["Reply-To"] = sender
         msg["Subject"] = subject
@@ -318,25 +319,27 @@ def send_email(to_email, subject, body, attachments=None):
                     except Exception as fe:
                         print("Attachment read notice:", fe)
 
-        # 1. Try IPv4 TLS port 587 first (10s timeout)
+        # 1. Try IPv4 TLS port 587 first
         try:
-            with IPv4SMTP("smtp.gmail.com", 587, timeout=10) as server:
+            with IPv4SMTP("smtp.gmail.com", 587, timeout=timeout_val) as server:
                 server.ehlo("gmail.com")
                 server.starttls()
                 server.login(sender, password)
                 server.send_message(msg, to_addrs=recipients)
             return True, "OK (IPv4 TLS 587)"
         except Exception as e1:
-            # 2. Try IPv4 SSL port 465 (10s timeout)
+            if fast_mode:
+                return False, f"fast_mode_timeout: {e1}"
+            # 2. Try IPv4 SSL port 465
             try:
-                with IPv4SMTP_SSL("smtp.gmail.com", 465, timeout=10) as server:
+                with IPv4SMTP_SSL("smtp.gmail.com", 465, timeout=timeout_val) as server:
                     server.login(sender, password)
                     server.send_message(msg, to_addrs=recipients)
                 return True, "OK (IPv4 SSL 465)"
             except Exception as e2:
                 # 3. Try standard TLS 587
                 try:
-                    with smtplib.SMTP("smtp.gmail.com", 587, timeout=10) as server:
+                    with smtplib.SMTP("smtp.gmail.com", 587, timeout=timeout_val) as server:
                         server.ehlo("gmail.com")
                         server.starttls()
                         server.login(sender, password)
@@ -345,7 +348,7 @@ def send_email(to_email, subject, body, attachments=None):
                 except Exception as e3:
                     # 4. Try standard SSL 465
                     try:
-                        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=10) as server:
+                        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=timeout_val) as server:
                             server.login(sender, password)
                             server.send_message(msg, to_addrs=recipients)
                         return True, "OK (SSL 465)"
@@ -452,14 +455,15 @@ Complaint:
 -- Sent via CivicFlow AI (Gemini + local open-source first-pass)
 """
 
-        # Fast path attempt
+        # Fast path attempt (max 3s timeout)
         ok, detail = send_email(
             to_header,
             "New Civic Grievance Report",
             full_body,
-            attachment_bytes
+            attachment_bytes,
+            fast_mode=True
         )
-        print(f"Synchronous send result for {to_header}: {ok} ({detail})")
+        print(f"Fast path send result for {to_header}: {ok} ({detail})")
 
         if ok:
             return jsonify({
@@ -468,29 +472,29 @@ Complaint:
                 "detail": detail,
                 "recipientsCount": len(recipients)
             }), 200
-        else:
-            # Fallback retry thread in background
-            def _bg_retry():
-                import time
-                for attempt in range(3):
-                    try:
-                        time.sleep(2)
-                        r_ok, r_detail = send_email(to_header, "New Civic Grievance Report", full_body, attachment_bytes)
-                        print(f"Background retry attempt {attempt+1} for {to_header}: {r_ok} ({r_detail})")
-                        if r_ok:
-                            break
-                    except Exception as ex:
-                        print(f"Background retry exception:", ex)
 
-            import threading
-            threading.Thread(target=_bg_retry, daemon=False).start()
+        # Background dispatch thread if fast path exceeds 3s
+        def _bg_retry():
+            import time
+            for attempt in range(4):
+                try:
+                    time.sleep(1)
+                    r_ok, r_detail = send_email(to_header, "New Civic Grievance Report", full_body, attachment_bytes, fast_mode=False)
+                    print(f"Background dispatch attempt {attempt+1} for {to_header}: {r_ok} ({r_detail})")
+                    if r_ok:
+                        break
+                except Exception as ex:
+                    print(f"Background dispatch exception:", ex)
 
-            return jsonify({
-                "status": "Mail queued for background dispatch",
-                "sent": True,
-                "detail": detail,
-                "recipientsCount": len(recipients)
-            }), 200
+        import threading
+        threading.Thread(target=_bg_retry, daemon=False).start()
+
+        return jsonify({
+            "status": "Mail queued for background dispatch",
+            "sent": True,
+            "detail": detail,
+            "recipientsCount": len(recipients)
+        }), 200
 
     except Exception as e:
         print("send_mail_api top exception:", e)
