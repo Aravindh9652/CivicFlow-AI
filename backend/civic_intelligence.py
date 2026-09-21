@@ -350,12 +350,28 @@ def _draft_mail(
     category_title = category if category else f"{department} Grievance"
     loc_str = f" at {city}" if city else ""
 
+    p_clean = (problem or "").strip()
+    if "I am writing" in p_clean or "Respected Sir" in p_clean:
+        letter_body = p_clean
+    elif emergency:
+        letter_body = (
+            f"I am writing to report a hazardous civic emergency requiring immediate intervention. {p_clean}\n\n"
+            f"This situation presents an extreme risk to public safety and residents in the vicinity. "
+            f"Please arrange for immediate emergency intervention and dispatch a field crew to secure the site."
+        )
+    else:
+        letter_body = (
+            f"I am writing to formally report a civic grievance requiring administrative intervention. {p_clean}\n\n"
+            f"This situation poses significant inconvenience and public health/safety concerns to local residents. "
+            f"Please inspect the specified location at the earliest and initiate necessary corrective measures to resolve this issue."
+        )
+
     return f"""To: {dept_title}
 Subject: {flag}{category_title}{loc_str}
 
 Respected Sir/Madam,
 
-{problem}
+{letter_body}
 
 Location: {city or "Not specified"}
 Urgency: {urgency}

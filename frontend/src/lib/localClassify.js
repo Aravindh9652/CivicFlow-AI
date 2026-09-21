@@ -146,6 +146,22 @@ export function classifyLocal(problem, city = "") {
     ? `${emergencyReason}${loc} Severity is ${severity} because of immediate public-safety risk.`
     : `${severity} priority for a ${department} issue based on reported impact without an immediate life-threatening emergency.${loc}`;
 
+  const pClean = (problem || "").trim();
+  let letterBody = pClean;
+  if (!pClean.includes("I am writing") && !pClean.includes("Respected Sir")) {
+    if (emergency) {
+      letterBody =
+        `I am writing to report a hazardous civic emergency requiring immediate intervention. ${pClean}\n\n` +
+        `This situation presents an extreme risk to public safety and residents in the vicinity. ` +
+        `Please arrange for immediate emergency intervention and dispatch a field crew to secure the site.`;
+    } else {
+      letterBody =
+        `I am writing to formally report a civic grievance requiring administrative intervention. ${pClean}\n\n` +
+        `This situation poses significant inconvenience and public health/safety concerns to local residents. ` +
+        `Please inspect the specified location at the earliest and initiate necessary corrective measures to resolve this issue.`;
+    }
+  }
+
   return {
     department,
     category,
@@ -177,7 +193,7 @@ Subject: ${emergency ? "CRITICAL EMERGENCY: " : ""}${category || `${department} 
 
 Respected Sir/Madam,
 
-${problem}
+${letterBody}
 
 Location: ${city || "Not specified"}
 Urgency: ${emergency ? "Immediate / Critical" : "High / Standard Action Required"}
