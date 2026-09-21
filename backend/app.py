@@ -370,14 +370,14 @@ def send_email(to_email, subject, body, attachments=None):
 
         # 1. Try IPv4 SSL 465
         try:
-            with IPv4SMTP_SSL("smtp.gmail.com", 465, timeout=10) as server:
+            with IPv4SMTP_SSL("smtp.gmail.com", 465, timeout=3.0) as server:
                 server.login(sender, password)
                 server.send_message(msg, to_addrs=recipients)
             return True
         except Exception as e1:
             # 2. Try IPv4 TLS 587
             try:
-                with IPv4SMTP("smtp.gmail.com", 587, timeout=10) as server:
+                with IPv4SMTP("smtp.gmail.com", 587, timeout=3.0) as server:
                     server.ehlo("gmail.com")
                     server.starttls()
                     server.login(sender, password)
@@ -386,14 +386,14 @@ def send_email(to_email, subject, body, attachments=None):
             except Exception as e2:
                 # 3. Try standard SSL 465
                 try:
-                    with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=10) as server:
+                    with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=3.0) as server:
                         server.login(sender, password)
                         server.send_message(msg, to_addrs=recipients)
                     return True
                 except Exception as e3:
                     # 4. Try standard TLS 587
                     try:
-                        with smtplib.SMTP("smtp.gmail.com", 587, timeout=10) as server:
+                        with smtplib.SMTP("smtp.gmail.com", 587, timeout=3.0) as server:
                             server.ehlo("gmail.com")
                             server.starttls()
                             server.login(sender, password)
