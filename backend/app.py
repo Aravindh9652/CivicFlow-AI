@@ -27,6 +27,17 @@ load_dotenv()
 app = Flask(__name__)
 CORS(app)
 
+@app.errorhandler(Exception)
+def handle_exception(e):
+    import traceback
+    tb = traceback.format_exc()
+    print("GLOBAL EXCEPTION HANDLER:", e, "\n", tb)
+    return jsonify({
+        "error": str(e),
+        "type": type(e).__name__,
+        "traceback": tb.splitlines()[-5:]
+    }), 500
+
 # ---------------- GEMINI CONFIG ----------------
 # EXISTING GEMINI INTEGRATION — intentionally preserved (google.generativeai).
 # Do not migrate to google.genai.
