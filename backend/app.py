@@ -661,6 +661,7 @@ def request_password_reset():
 def home():
     return jsonify({
         "status": "CivicFlow AI backend running",
+        "version": "v1.0.5-live-dispatch",
         "legacy": "GrievanceNet APIs preserved",
         "gemini": "google.generativeai",
         "localModel": "CivicHashNgram-128",
