@@ -173,11 +173,9 @@ export function classifyLocal(problem, city = "") {
         ? "District Medical & Health Officer / Public Health Authority"
         : `${department} Authority`
     }
-Subject: ${emergency ? "CRITICAL EMERGENCY: " : ""}${category} at ${city || "Reported Location"}
+Subject: ${emergency ? "CRITICAL EMERGENCY: " : ""}${category || `${department} Grievance`}${city ? ` at ${city}` : ""}
 
 Respected Sir/Madam,
-
-I am writing to report a hazardous civic issue requiring official intervention:
 
 ${problem}
 

@@ -332,38 +332,33 @@ def _citizen_advice(department: str, emergency: bool) -> str:
 def _draft_mail(
     problem: str, city: str, department: str, category: str, emergency: bool
 ) -> str:
-    dept_title = f"{department} Authority"
     if department == "Electricity":
         dept_title = "Executive Engineer / Assistant Engineer, Operations, Electricity Distribution Department"
     elif department == "Municipal":
-        dept_title = "Municipal Commissioner / Executive Officer, Municipal Administration & Sanitation Department"
+        dept_title = "Municipal Commissioner / Executive Officer, Municipal Authority"
     elif department == "Water":
         dept_title = "Superintending Engineer / Executive Engineer, Water Supply & Sanitation Department"
     elif department == "Police":
         dept_title = "Station House Officer / Inspector of Police, Local Police Department"
     elif department == "Health":
         dept_title = "District Medical & Health Officer / Public Health Authority"
+    else:
+        dept_title = f"{department} Authority"
 
     flag = "CRITICAL EMERGENCY: " if emergency else ""
-    urgency = "Immediate / Critical" if emergency else "Standard / High Action Required"
+    urgency = "Immediate / Critical" if emergency else "High / Standard Action Required"
+    category_title = category if category else f"{department} Grievance"
+    loc_str = f" at {city}" if city else ""
 
     return f"""To: {dept_title}
-Subject: {flag}{category if category else 'Civic Grievance'} at {city or 'Reported Location'}
+Subject: {flag}{category_title}{loc_str}
 
 Respected Sir/Madam,
 
-I am writing to formally report a civic grievance requiring urgent administrative intervention and remediation.
-
-Description of Civic Issue:
 {problem}
 
-Location / Jurisdiction: {city or "Not specified"}
-Urgency Level: {urgency}
-
-Request for Action:
-Kindly inspect the specified location at the earliest, dispatch appropriate field personnel, and initiate necessary corrective measures to resolve this issue and safeguard public convenience and safety.
-
-Thanking you.
+Location: {city or "Not specified"}
+Urgency: {urgency}
 
 Yours faithfully,
 Concerned Citizen"""

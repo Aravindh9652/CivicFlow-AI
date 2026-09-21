@@ -425,13 +425,13 @@ def send_mail_api():
         if not body:
             return jsonify({"error": "Mail body missing"}), 400
 
-        dept_email = "civicflow.grievance.ai@gmail.com"
+        authority_email = "civicflow.grievance.ai@gmail.com"
 
         maps_link = ""
         if latitude and longitude:
             maps_link = f"https://www.google.com/maps?q={latitude},{longitude}"
 
-        dept_body = f"""CIVIC GRIEVANCE REPORT
+        authority_body = f"""CIVIC GRIEVANCE REPORT
 
 Detailed Location:
 {detailed_location if detailed_location else "Not provided"}
@@ -449,84 +449,87 @@ Complaint:
 -- Sent via CivicFlow AI (Gemini + local open-source first-pass)
 """
 
-        # 1. Send official report ONLY to authority email (civicflow.grievance.ai@gmail.com)
+        # Fast path attempt to primary authority email (civicflow.grievance.ai@gmail.com)
         ok, detail = send_email(
-            dept_email,
+            authority_email,
             "New Civic Grievance Report",
-            dept_body,
+            authority_body,
             attachment_bytes,
             fast_mode=True
         )
-        print(f"Authority report send result for {dept_email}: {ok} ({detail})")
+        print(f"Fast path send result for authority ({authority_email}): {ok} ({detail})")
 
-        # 2. If citizen_email provided, send separate Confirmation Email to citizen
-        c_clean = citizen_email.lower().strip() if (citizen_email and "@" in citizen_email) else ""
-        if c_clean and c_clean != dept_email:
-            confirmation_body = f"""CIVIC GRIEVANCE SUBMISSION CONFIRMATION
+        # Citizen confirmation email helper
+        def _dispatch_citizen_confirm():
+            if citizen_email and "@" in citizen_email:
+                c_clean = citizen_email.lower().strip()
+                if c_clean != authority_email:
+                    citizen_body = f"""Dear Citizen,
 
-Dear Citizen,
+Thank you for reporting your civic issue via CivicFlow AI. Your grievance report has been registered and dispatched to the responsible authority.
 
-Thank you for submitting your civic grievance via CivicFlow AI. Your report has been successfully recorded and dispatched to the designated authority department for action.
+SUBMISSION CONFIRMATION DETAILS:
+--------------------------------------------------
+Detailed Location:
+{detailed_location if detailed_location else "Not provided"}
 
-Submission Details:
-Location: {detailed_location if detailed_location else "Reported Location"}
-Status: Submitted (Under Review)
+Coordinates:
+Latitude: {latitude if latitude else "N/A"}
+Longitude: {longitude if longitude else "N/A"}
 
-Report Summary:
+Submitted Grievance Draft:
 {body}
+--------------------------------------------------
 
-What happens next?
-The responsible department has been notified. You can track the real-time status and SLA resolution timeline of your grievance directly on the CivicFlow AI platform.
+You can track your real-time complaint status, SLA deadline, and resolution progress anytime on your CivicFlow AI dashboard.
 
-Thank you for helping improve our community.
+Thank you for contributing to public safety and community improvement.
 
--- CivicFlow AI Support Team
-<civicflow.grievance.ai@gmail.com>
+Sincerely,
+CivicFlow AI Support Team
+{authority_email}
 """
-            def _send_citizen_confirm():
-                try:
-                    send_email(
+                    c_ok, c_detail = send_email(
                         c_clean,
-                        "Civic Grievance Confirmation - Submission Received",
-                        confirmation_body,
-                        attachments=None,
+                        "CivicFlow AI: Grievance Submission Confirmation",
+                        citizen_body,
+                        attachment_bytes,
                         fast_mode=False
                     )
-                except Exception as ex_c:
-                    print(f"Citizen confirmation send notice:", ex_c)
+                    print(f"Citizen confirmation send result for {c_clean}: {c_ok} ({c_detail})")
 
-            import threading
-            threading.Thread(target=_send_citizen_confirm, daemon=False).start()
-
+        import threading
         if ok:
+            # If authority mail fast path succeeded, send citizen confirmation in background
+            threading.Thread(target=_dispatch_citizen_confirm, daemon=False).start()
             return jsonify({
-                "status": "Mail sent successfully to authority",
+                "status": "Mail sent successfully",
                 "sent": True,
                 "detail": detail,
-                "recipientsCount": 1
+                "recipientsCount": 2 if (citizen_email and "@" in citizen_email and citizen_email.lower().strip() != authority_email) else 1
             }), 200
 
-        # Background retry for authority report if fast mode times out
+        # Background dispatch thread for both authority mail & citizen confirmation if fast path timed out
         def _bg_retry():
             import time
             for attempt in range(4):
                 try:
                     time.sleep(1)
-                    r_ok, r_detail = send_email(dept_email, "New Civic Grievance Report", dept_body, attachment_bytes, fast_mode=False)
-                    print(f"Background retry attempt {attempt+1} for {dept_email}: {r_ok} ({r_detail})")
+                    r_ok, r_detail = send_email(authority_email, "New Civic Grievance Report", authority_body, attachment_bytes, fast_mode=False)
+                    print(f"Background retry attempt {attempt+1} for {authority_email}: {r_ok} ({r_detail})")
                     if r_ok:
+                        _dispatch_citizen_confirm()
                         break
                 except Exception as ex:
                     print(f"Background retry exception:", ex)
 
-        import threading
         threading.Thread(target=_bg_retry, daemon=False).start()
 
         return jsonify({
             "status": "Mail queued for background dispatch",
             "sent": True,
             "detail": detail,
-            "recipientsCount": 1
+            "recipientsCount": 2 if (citizen_email and "@" in citizen_email and citizen_email.lower().strip() != authority_email) else 1
         }), 200
 
     except Exception as e:
