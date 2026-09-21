@@ -368,43 +368,44 @@ def send_email(to_email, subject, body, attachments=None):
                     except Exception as fe:
                         print("Attachment read notice:", fe)
 
-        # 1. Try IPv4 SSL 465
+        # 1. Try standard SSL 465
         try:
-            with IPv4SMTP_SSL("smtp.gmail.com", 465, timeout=3.0) as server:
+            with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=10) as server:
                 server.login(sender, password)
                 server.send_message(msg, to_addrs=recipients)
-            return True
+            return True, "OK"
         except Exception as e1:
-            # 2. Try IPv4 TLS 587
+            # 2. Try standard TLS 587
             try:
-                with IPv4SMTP("smtp.gmail.com", 587, timeout=3.0) as server:
+                with smtplib.SMTP("smtp.gmail.com", 587, timeout=10) as server:
                     server.ehlo("gmail.com")
                     server.starttls()
                     server.login(sender, password)
                     server.send_message(msg, to_addrs=recipients)
-                return True
+                return True, "OK"
             except Exception as e2:
-                # 3. Try standard SSL 465
+                # 3. Try IPv4 SSL 465
                 try:
-                    with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=3.0) as server:
+                    with IPv4SMTP_SSL("smtp.gmail.com", 465, timeout=10) as server:
                         server.login(sender, password)
                         server.send_message(msg, to_addrs=recipients)
-                    return True
+                    return True, "OK"
                 except Exception as e3:
-                    # 4. Try standard TLS 587
+                    # 4. Try IPv4 TLS 587
                     try:
-                        with smtplib.SMTP("smtp.gmail.com", 587, timeout=3.0) as server:
+                        with IPv4SMTP("smtp.gmail.com", 587, timeout=10) as server:
                             server.ehlo("gmail.com")
                             server.starttls()
                             server.login(sender, password)
                             server.send_message(msg, to_addrs=recipients)
-                        return True
+                        return True, "OK"
                     except Exception as e4:
-                        print(f"SMTP Error: ipv4_ssl465={e1} | ipv4_tls587={e2} | ssl465={e3} | tls587={e4}")
-                        return False
+                        err_summary = f"ssl465={e1} | tls587={e2} | ipv4_ssl465={e3} | ipv4_tls587={e4}"
+                        print(f"SMTP Error: {err_summary}")
+                        return False, err_summary
     except Exception as err:
         print("Email prep notice:", err)
-        return False
+        return False, str(err)
 
 
 # ---------------- SEND EMAIL ----------------
@@ -496,7 +497,7 @@ Complaint:
 -- Sent via CivicFlow AI (Gemini + local open-source first-pass)
 """
 
-        is_sent = send_email(
+        is_sent, smtp_detail = send_email(
             to_header,
             "New Civic Grievance Report",
             full_body,
@@ -504,9 +505,10 @@ Complaint:
         )
 
         return jsonify({
-            "status": "Mail sent successfully" if is_sent else "Mail delivery failed",
+            "status": "Mail sent successfully" if is_sent else f"Mail delivery failed: {smtp_detail}",
             "sent": is_sent,
-            "recipientsCount": len(recipients) if is_sent else 0
+            "recipientsCount": len(recipients) if is_sent else 0,
+            "detail": smtp_detail
         })
 
     except Exception as e:
