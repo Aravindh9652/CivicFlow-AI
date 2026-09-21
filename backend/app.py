@@ -318,39 +318,39 @@ def send_email(to_email, subject, body, attachments=None):
                     except Exception as fe:
                         print("Attachment read notice:", fe)
 
-        # 1. Try TLS port 587
+        # 1. Try IPv4 TLS port 587 first (Fastest for cloud hosts like Render)
         try:
-            with smtplib.SMTP("smtp.gmail.com", 587, timeout=10) as server:
+            with IPv4SMTP("smtp.gmail.com", 587, timeout=4) as server:
                 server.ehlo("gmail.com")
                 server.starttls()
                 server.login(sender, password)
                 server.send_message(msg, to_addrs=recipients)
-            return True, "OK (TLS 587)"
+            return True, "OK (IPv4 TLS 587)"
         except Exception as e1:
-            # 2. Try SSL port 465
+            # 2. Try IPv4 SSL port 465
             try:
-                with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=10) as server:
+                with IPv4SMTP_SSL("smtp.gmail.com", 465, timeout=4) as server:
                     server.login(sender, password)
                     server.send_message(msg, to_addrs=recipients)
-                return True, "OK (SSL 465)"
+                return True, "OK (IPv4 SSL 465)"
             except Exception as e2:
-                # 3. Try IPv4 SSL 465
+                # 3. Try standard TLS 587
                 try:
-                    with IPv4SMTP_SSL("smtp.gmail.com", 465, timeout=10) as server:
+                    with smtplib.SMTP("smtp.gmail.com", 587, timeout=4) as server:
+                        server.ehlo("gmail.com")
+                        server.starttls()
                         server.login(sender, password)
                         server.send_message(msg, to_addrs=recipients)
-                    return True, "OK (IPv4 SSL 465)"
+                    return True, "OK (TLS 587)"
                 except Exception as e3:
-                    # 4. Try IPv4 TLS 587
+                    # 4. Try standard SSL 465
                     try:
-                        with IPv4SMTP("smtp.gmail.com", 587, timeout=10) as server:
-                            server.ehlo("gmail.com")
-                            server.starttls()
+                        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=4) as server:
                             server.login(sender, password)
                             server.send_message(msg, to_addrs=recipients)
-                        return True, "OK (IPv4 TLS 587)"
+                        return True, "OK (SSL 465)"
                     except Exception as e4:
-                        err_summary = f"tls587={e1} | ssl465={e2} | ipv4_ssl465={e3} | ipv4_tls587={e4}"
+                        err_summary = f"ipv4_tls587={e1} | ipv4_ssl465={e2} | tls587={e3} | ssl465={e4}"
                         print(f"SMTP Error: {err_summary}")
                         return False, err_summary
     except Exception as err:
