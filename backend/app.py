@@ -359,7 +359,7 @@ def send_email(to_email, subject, body, attachments=None):
 
 
 # ---------------- SEND EMAIL ----------------
-@app.route("/send-email", methods=["POST"])
+@app.route("/send-email", methods=["GET", "POST"])
 def send_mail_api():
     try:
         body = ""
