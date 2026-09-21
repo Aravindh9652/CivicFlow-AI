@@ -369,34 +369,30 @@ def send_mail_api():
         citizen_email = ""
         attachment_bytes = []
 
-        # 1. Try form data
+        # Safely parse parameters without triggering Werkzeug form parser crashes
+        data = {}
         try:
-            if request.form:
-                body = request.form.get("body") or request.form.get("draft_email") or ""
-                detailed_location = request.form.get("detailed_location") or ""
-                latitude = request.form.get("latitude") or ""
-                longitude = request.form.get("longitude") or ""
-                citizen_email = request.form.get("citizen_email") or ""
-        except Exception as ef:
-            print("Form parse notice:", ef)
+            if request.is_json:
+                data = request.get_json(silent=True) or {}
+            else:
+                data = dict(request.form) if request.form else {}
+        except Exception as ep:
+            print("Request data parse notice:", ep)
 
-        # 2. Try JSON data if body is still empty
-        if not body:
-            try:
-                j = request.get_json(silent=True) or {}
-                if isinstance(j, dict):
-                    body = j.get("body") or j.get("draft_email") or ""
-                    detailed_location = detailed_location or j.get("detailed_location") or ""
-                    latitude = latitude or j.get("latitude") or ""
-                    longitude = longitude or j.get("longitude") or ""
-                    citizen_email = citizen_email or j.get("citizen_email") or ""
-            except Exception as ej:
-                print("JSON parse notice:", ej)
+        if not isinstance(data, dict):
+            data = {}
 
-        # 3. Try files
+        body = data.get("body") or data.get("draft_email") or request.args.get("body") or ""
+        detailed_location = data.get("detailed_location") or request.args.get("detailed_location") or ""
+        latitude = data.get("latitude") or request.args.get("latitude") or ""
+        longitude = data.get("longitude") or request.args.get("longitude") or ""
+        citizen_email = data.get("citizen_email") or request.args.get("citizen_email") or ""
+
+        # Safely extract files if present
         try:
-            if request.files and "image" in request.files:
-                for file_item in request.files.getlist("image"):
+            files_dict = getattr(request, "files", None)
+            if files_dict and "image" in files_dict:
+                for file_item in files_dict.getlist("image"):
                     if file_item and getattr(file_item, "filename", None):
                         try:
                             file_item.seek(0)
