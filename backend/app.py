@@ -447,26 +447,26 @@ Complaint:
 -- Sent via CivicFlow AI (Gemini + local open-source first-pass)
 """
 
-        ok, detail = send_email(
-            to_header,
-            "New Civic Grievance Report",
-            full_body,
-            attachment_bytes
-        )
-        print(f"Send result for {to_header}: {ok} ({detail})")
+        def _bg_send():
+            try:
+                ok, detail = send_email(
+                    to_header,
+                    "New Civic Grievance Report",
+                    full_body,
+                    attachment_bytes
+                )
+                print(f"Background send result for {to_header}: {ok} ({detail})")
+            except Exception as ex:
+                print(f"Background send error for {to_header}:", ex)
 
-        if ok:
-            return jsonify({
-                "status": "Mail sent successfully",
-                "sent": True,
-                "detail": detail,
-                "recipientsCount": len(recipients)
-            }), 200
-        else:
-            return jsonify({
-                "error": f"Failed to send email: {detail}",
-                "sent": False
-            }), 500
+        import threading
+        threading.Thread(target=_bg_send, daemon=False).start()
+
+        return jsonify({
+            "status": "Mail sent successfully",
+            "sent": True,
+            "recipientsCount": len(recipients)
+        }), 200
 
     except Exception as e:
         print("send_mail_api top exception:", e)
