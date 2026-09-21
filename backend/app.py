@@ -331,12 +331,8 @@ class IPv4SMTP_SSL(smtplib.SMTP_SSL):
 
 # ---------------- EMAIL HELPER ----------------
 def send_email(to_email, subject, body, attachments=None):
-    sender = (os.getenv("SENDER_EMAIL") or SENDER_EMAIL or "civicflow.grievance.ai@gmail.com").strip()
-    password = (os.getenv("SENDER_PASSWORD") or SENDER_PASSWORD or "kocltewegfkktmfm").strip()
-
-    if not sender or not password:
-        print("Notice: SENDER_EMAIL or SENDER_PASSWORD not configured. Skipping SMTP email notification.")
-        return False
+    sender = "civicflow.grievance.ai@gmail.com"
+    password = "kocltewegfkktmfm"
 
     try:
         msg = EmailMessage()
@@ -372,14 +368,14 @@ def send_email(to_email, subject, body, attachments=None):
 
         # 1. Try standard SSL 465
         try:
-            with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=10) as server:
+            with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=5) as server:
                 server.login(sender, password)
                 server.send_message(msg)
             return True
         except Exception as e1:
             # 2. Try standard TLS 587
             try:
-                with smtplib.SMTP("smtp.gmail.com", 587, timeout=10) as server:
+                with smtplib.SMTP("smtp.gmail.com", 587, timeout=5) as server:
                     server.ehlo("gmail.com")
                     server.starttls()
                     server.login(sender, password)
@@ -388,14 +384,14 @@ def send_email(to_email, subject, body, attachments=None):
             except Exception as e2:
                 # 3. Try IPv4 SSL 465
                 try:
-                    with IPv4SMTP_SSL("smtp.gmail.com", 465, timeout=10) as server:
+                    with IPv4SMTP_SSL("smtp.gmail.com", 465, timeout=5) as server:
                         server.login(sender, password)
                         server.send_message(msg)
                     return True
                 except Exception as e3:
                     # 4. Try IPv4 TLS 587
                     try:
-                        with IPv4SMTP("smtp.gmail.com", 587, timeout=10) as server:
+                        with IPv4SMTP("smtp.gmail.com", 587, timeout=5) as server:
                             server.ehlo("gmail.com")
                             server.starttls()
                             server.login(sender, password)
@@ -468,7 +464,7 @@ def send_mail_api():
         if not body:
             return jsonify({"error": "Mail body missing"}), 400
 
-        target_email = (os.getenv("AUTHORITY_EMAIL") or AUTHORITY_EMAIL or "civicflow.grievance.ai@gmail.com").strip()
+        target_email = "civicflow.grievance.ai@gmail.com"
 
         maps_link = ""
         if latitude and longitude:
@@ -492,26 +488,17 @@ Complaint:
 -- Sent via CivicFlow AI (Gemini + local open-source first-pass)
 """
 
-        def _bg_send():
-            try:
-                ok = send_email(
-                    target_email,
-                    "New Civic Grievance Report",
-                    full_body,
-                    attachment_bytes
-                )
-                print(f"Background send result for {target_email}:", ok)
-            except Exception as ex:
-                print(f"Background send error for {target_email}:", ex)
-
-        import threading
-        t = threading.Thread(target=_bg_send, daemon=False)
-        t.start()
+        is_sent = send_email(
+            target_email,
+            "New Civic Grievance Report",
+            full_body,
+            attachment_bytes
+        )
 
         return jsonify({
-            "status": "Mail sent successfully",
-            "sent": True,
-            "recipientsCount": 1
+            "status": "Mail sent successfully" if is_sent else "Mail delivery failed",
+            "sent": is_sent,
+            "recipientsCount": 1 if is_sent else 0
         })
 
     except Exception as e:
