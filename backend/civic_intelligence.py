@@ -332,29 +332,35 @@ def _citizen_advice(department: str, emergency: bool) -> str:
 def _draft_mail(
     problem: str, city: str, department: str, category: str, emergency: bool
 ) -> str:
-    flag = "EMERGENCY — " if emergency else ""
-    return f"""To,
-The {department} Authority
+    dept_title = f"{department} Authority"
+    if department == "Electricity":
+        dept_title = "Executive Engineer / Assistant Engineer, Operations, Electricity Distribution Department"
+    elif department == "Municipal":
+        dept_title = "Municipal Commissioner / Executive Officer, Municipal Authority"
+    elif department == "Water":
+        dept_title = "Superintending Engineer / Executive Engineer, Water Supply & Sanitation Department"
+    elif department == "Police":
+        dept_title = "Station House Officer / Inspector of Police, Local Police Department"
+    elif department == "Health":
+        dept_title = "District Medical & Health Officer / Public Health Authority"
 
-Subject: {flag}Civic grievance — {category}
+    flag = "CRITICAL EMERGENCY: " if emergency else ""
+    urgency = "Immediate / Critical" if emergency else "High / Standard Action Required"
+
+    return f"""To: {dept_title}
+Subject: {flag}{category} at {city or 'Reported Location'}
 
 Respected Sir/Madam,
 
-I would like to report the following civic issue:
+I am writing to report a hazardous civic issue requiring official intervention:
 
 {problem}
 
-Location / area: {city or "Not specified"}
+Location: {city or "Not specified"}
+Urgency: {urgency}
 
-Kindly inspect and take necessary action. This report was prepared with CivicFlow AI
-assistance. For emergencies, citizens are advised to call {INDIA_EMERGENCY_NUMBER};
-this email is supporting evidence, not a substitute for emergency services.
-
-Thanking you.
-
-Yours sincerely,
-A concerned citizen
-"""
+Yours faithfully,
+Concerned Citizen"""
 
 
 def validate_and_normalize(payload: dict[str, Any], fallback_problem: str, city: str) -> dict[str, Any]:

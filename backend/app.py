@@ -468,11 +468,7 @@ def send_mail_api():
         if not body:
             return jsonify({"error": "Mail body missing"}), 400
 
-        recipients = [(os.getenv("AUTHORITY_EMAIL") or AUTHORITY_EMAIL or "civicflow.grievance.ai@gmail.com").strip()]
-        if citizen_email and "@" in citizen_email:
-            c_clean = citizen_email.lower().strip()
-            if not any(r.lower() == c_clean for r in recipients):
-                recipients.append(c_clean)
+        target_email = (os.getenv("AUTHORITY_EMAIL") or AUTHORITY_EMAIL or "civicflow.grievance.ai@gmail.com").strip()
 
         maps_link = ""
         if latitude and longitude:
@@ -480,41 +476,33 @@ def send_mail_api():
 
         full_body = f"""CIVIC GRIEVANCE REPORT
 
-📍 Detailed Location:
+Detailed Location:
 {detailed_location if detailed_location else "Not provided"}
 
-🧭 Coordinates:
+Coordinates:
 Latitude: {latitude if latitude else "N/A"}
 Longitude: {longitude if longitude else "N/A"}
 
-🗺️ Open in Google Maps:
+Open in Google Maps:
 {maps_link if maps_link else "Location link not available"}
 
-📝 Complaint:
+Complaint:
 {body}
 
 -- Sent via CivicFlow AI (Gemini + local open-source first-pass)
 """
 
-        def _bg_send():
-            for rcpt in recipients:
-                try:
-                    send_email(
-                        rcpt,
-                        "New Civic Grievance Report",
-                        full_body,
-                        attachment_bytes
-                    )
-                except Exception as ex:
-                    print(f"Background send error to {rcpt}:", ex)
-
-        import threading
-        threading.Thread(target=_bg_send, daemon=True).start()
+        is_sent = send_email(
+            target_email,
+            "New Civic Grievance Report",
+            full_body,
+            attachment_bytes
+        )
 
         return jsonify({
-            "status": "Mail sent successfully",
-            "sent": True,
-            "recipientsCount": len(recipients)
+            "status": "Mail sent successfully" if is_sent else "Mail notification bypassed",
+            "sent": is_sent,
+            "recipientsCount": 1 if is_sent else 0
         })
 
     except Exception as e:
