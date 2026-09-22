@@ -49,10 +49,8 @@
       border: 2px solid rgba(139, 92, 246, 0.45);
       box-shadow: 0 12px 32px rgba(0, 0, 0, 0.7);
       border-radius: 12px;
-      object-fit: contain;
       background: rgba(8, 11, 30, 0.6);
       width: 100%;
-      height: auto;
       transition: transform 0.25s ease, border-color 0.25s ease;
     }
     .img-frame:hover {
@@ -154,14 +152,14 @@
             </div>
           </div>
 
-          <div class="grid grid-cols-2 gap-3 text-center">
-            <div>
+          <div class="grid grid-cols-2 gap-3 text-center items-stretch">
+            <div class="flex flex-col h-full">
               <span class="text-[10px] font-bold text-purple-300 mb-1 block">Citizen Portal UI</span>
-              <img src="deck_images/media_1789887017762.png" alt="Citizen Login" class="img-frame max-h-48 sm:max-h-60 md:max-h-72 mx-auto" />
+              <img src="deck_images/media_1789887017762.png" alt="Citizen Login" class="img-frame h-48 sm:h-56 md:h-64 w-full object-cover rounded-xl mx-auto flex-grow" />
             </div>
-            <div>
+            <div class="flex flex-col h-full">
               <span class="text-[10px] font-bold text-blue-300 mb-1 block">Authority Admin Portal</span>
-              <img src="deck_images/media_1789887058775.png" alt="Authority Admin" class="img-frame max-h-48 sm:max-h-60 md:max-h-72 mx-auto" />
+              <img src="deck_images/media_1789887058775.png" alt="Authority Admin" class="img-frame h-48 sm:h-56 md:h-64 w-full object-cover rounded-xl mx-auto flex-grow" />
             </div>
           </div>
         </div>
