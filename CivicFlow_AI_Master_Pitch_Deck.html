@@ -49,11 +49,14 @@
       border: 2px solid rgba(139, 92, 246, 0.45);
       box-shadow: 0 12px 32px rgba(0, 0, 0, 0.7);
       border-radius: 12px;
-      object-fit: cover;
+      object-fit: contain;
+      background: rgba(8, 11, 30, 0.6);
+      width: 100%;
+      height: auto;
       transition: transform 0.25s ease, border-color 0.25s ease;
     }
     .img-frame:hover {
-      transform: scale(1.025);
+      transform: scale(1.02);
       border-color: rgba(6, 182, 212, 0.7);
     }
     .code-box {
@@ -72,7 +75,7 @@
       </div>
       <div>
         <h1 class="font-bold text-base sm:text-lg leading-tight tracking-wide flex items-center gap-2">
-          CivicFlow AI <span class="text-xs px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 font-mono">18 Slides</span>
+          CivicFlow AI <span class="text-xs px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 font-mono">20 Slides</span>
         </h1>
         <p class="text-xs text-[var(--muted)]">iQOO City Battles 2026 · Hyderabad Battle 04 · TeamGaneshaa (Code: 67UHS3)</p>
       </div>
@@ -99,10 +102,12 @@
         <option value="12">Slide 12: Production Environment & IPv4 SMTP Engine</option>
         <option value="13">Slide 13: Dynamic Formal Email Generation Engine</option>
         <option value="14">Slide 14: Dual-Email Dispatch & Citizen Confirmation</option>
-        <option value="15">Slide 15: Dynamic Location Fallbacks & OpenStreetMap GPS</option>
-        <option value="16">Slide 16: Multimodal Speech & Image Compression</option>
-        <option value="17">Slide 17: iQOO City Battles Scoring Alignment</option>
-        <option value="18">Slide 18: Live Web App Showcase & Pitch Links</option>
+        <option value="15">Slide 15: Dynamic Location Fallbacks & Google Maps URLs</option>
+        <option value="16">Slide 16: Native Android Mobile Application & APK</option>
+        <option value="17">Slide 17: Android On-Device NPU & Native Hardware Sync</option>
+        <option value="18">Slide 18: Multimodal Speech & Image Compression</option>
+        <option value="19">Slide 19: iQOO City Battles Scoring Alignment</option>
+        <option value="20">Slide 20: Live Web App Showcase & Pitch Links</option>
       </select>
 
       <button id="nextBtn" onclick="changeSlide(1)" class="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 hover:opacity-90 text-xs font-semibold shadow-md transition flex items-center gap-1">
@@ -152,11 +157,11 @@
           <div class="grid grid-cols-2 gap-3 text-center">
             <div>
               <span class="text-[10px] font-bold text-purple-300 mb-1 block">Citizen Portal UI</span>
-              <img src="deck_images/media_1789887017762.png" alt="Citizen Login" class="img-frame max-h-44 mx-auto" />
+              <img src="deck_images/media_1789887017762.png" alt="Citizen Login" class="img-frame max-h-48 sm:max-h-60 md:max-h-72 mx-auto" />
             </div>
             <div>
               <span class="text-[10px] font-bold text-blue-300 mb-1 block">Authority Admin Portal</span>
-              <img src="deck_images/media_1789887058775.png" alt="Authority Admin" class="img-frame max-h-44 mx-auto" />
+              <img src="deck_images/media_1789887058775.png" alt="Authority Admin" class="img-frame max-h-48 sm:max-h-60 md:max-h-72 mx-auto" />
             </div>
           </div>
         </div>
@@ -191,7 +196,7 @@
 
           <div class="text-center">
             <span class="text-[11px] font-bold text-rose-300 mb-1 block">Live Citizen Registration Interface (`https://civicflow-ai-b2144.web.app/`)</span>
-            <img src="deck_images/media_1789887043657.png" alt="Citizen Registration" class="img-frame max-h-56 mx-auto" />
+            <img src="deck_images/media_1789887043657.png" alt="Citizen Registration" class="img-frame max-h-64 sm:max-h-80 md:max-h-[380px] mx-auto" />
           </div>
         </div>
       </div>
@@ -221,7 +226,7 @@
 
           <div class="text-center">
             <span class="text-[11px] font-bold text-cyan-300 mb-1 block">Live Citizen Welcome Hub (`View My Complaints` / `Raise New Complaint`)</span>
-            <img src="deck_images/media_1789887088361.png" alt="Citizen Welcome Hub" class="img-frame max-h-56 mx-auto" />
+            <img src="deck_images/media_1789887088361.png" alt="Citizen Welcome Hub" class="img-frame max-h-64 sm:max-h-80 md:max-h-[380px] mx-auto" />
           </div>
         </div>
       </div>
@@ -237,11 +242,11 @@
           <div class="space-y-3">
             <div class="text-center">
               <span class="text-[11px] font-bold text-purple-300 mb-1 block">1. Citizen Intake & Photo Evidence Attachment</span>
-              <img src="deck_images/media_1790078160989.png" alt="Citizen Complaint Intake Form" class="img-frame max-h-44 mx-auto" />
+              <img src="deck_images/media_1790078160989.png" alt="Citizen Complaint Intake Form" class="img-frame max-h-52 sm:max-h-64 md:max-h-72 mx-auto" />
             </div>
             <div class="text-center">
               <span class="text-[11px] font-bold text-cyan-300 mb-1 block">2. AI-Generated Draft & Priority Rationale</span>
-              <img src="deck_images/media_1790078191734.png" alt="AI Generated Draft & Rationale" class="img-frame max-h-44 mx-auto" />
+              <img src="deck_images/media_1790078191734.png" alt="AI Generated Draft & Rationale" class="img-frame max-h-52 sm:max-h-64 md:max-h-72 mx-auto" />
             </div>
           </div>
 
@@ -375,11 +380,11 @@
           <div class="space-y-3">
             <div class="text-center">
               <span class="text-[11px] font-bold text-rose-300 mb-1 block">AI Analysis Result & Direct 112 Action Banner</span>
-              <img src="deck_images/media_1790079224960.png" alt="AI Result & Emergency 112 Banner" class="img-frame max-h-44 mx-auto" />
+              <img src="deck_images/media_1790079224960.png" alt="AI Result & Emergency 112 Banner" class="img-frame max-h-52 sm:max-h-64 md:max-h-72 mx-auto" />
             </div>
             <div class="text-center">
               <span class="text-[11px] font-bold text-purple-300 mb-1 block">Authority SLA & Escalation Monitoring Dashboard</span>
-              <img src="deck_images/media_1790079553595.png" alt="SLA Escalation Dashboard" class="img-frame max-h-44 mx-auto" />
+              <img src="deck_images/media_1790079553595.png" alt="SLA Escalation Dashboard" class="img-frame max-h-52 sm:max-h-64 md:max-h-72 mx-auto" />
             </div>
           </div>
         </div>
@@ -396,11 +401,11 @@
           <div class="space-y-3">
             <div class="text-center">
               <span class="text-[11px] font-bold text-amber-300 mb-1 block">Live Interactive Hotspot Map View</span>
-              <img src="deck_images/media_1790080243669.png" alt="Live Hotspot Map View" class="img-frame max-h-44 mx-auto" />
+              <img src="deck_images/media_1790080243669.png" alt="Live Hotspot Map View" class="img-frame max-h-52 sm:max-h-64 md:max-h-72 mx-auto" />
             </div>
             <div class="text-center">
               <span class="text-[11px] font-bold text-purple-300 mb-1 block">Geographic 450m Issue Clusters View</span>
-              <img src="deck_images/media_1790079519350.png" alt="Geographic Issue Clusters View" class="img-frame max-h-44 mx-auto" />
+              <img src="deck_images/media_1790079519350.png" alt="Geographic Issue Clusters View" class="img-frame max-h-52 sm:max-h-64 md:max-h-72 mx-auto" />
             </div>
           </div>
 
@@ -446,7 +451,7 @@
 
           <div class="text-center">
             <span class="text-[11px] font-bold text-blue-300 mb-1 block">Live Authority AI Action Queue & Demo Controls</span>
-            <img src="deck_images/media_1790079836607.png" alt="AI Action Queue Dashboard" class="img-frame max-h-64 mx-auto" />
+            <img src="deck_images/media_1790079836607.png" alt="AI Action Queue Dashboard" class="img-frame max-h-72 sm:max-h-96 md:max-h-[420px] mx-auto" />
           </div>
         </div>
       </div>
@@ -462,11 +467,11 @@
           <div class="space-y-3">
             <div class="text-center">
               <span class="text-[11px] font-bold text-purple-300 mb-1 block">Live My Complaints Account Filtered List View</span>
-              <img src="deck_images/media_1790080524157.png" alt="My Complaints List View" class="img-frame max-h-44 mx-auto" />
+              <img src="deck_images/media_1790080524157.png" alt="My Complaints List View" class="img-frame max-h-52 sm:max-h-64 md:max-h-72 mx-auto" />
             </div>
             <div class="text-center">
               <span class="text-[11px] font-bold text-cyan-300 mb-1 block">Live 5-Step Grievance Status Timeline Modal</span>
-              <img src="deck_images/media_1790080561922.png" alt="5-Step Grievance Status Timeline Modal" class="img-frame max-h-44 mx-auto" />
+              <img src="deck_images/media_1790080561922.png" alt="5-Step Grievance Status Timeline Modal" class="img-frame max-h-52 sm:max-h-64 md:max-h-72 mx-auto" />
             </div>
           </div>
 
@@ -507,8 +512,8 @@
           </div>
 
           <div class="text-center">
-            <span class="text-[11px] font-bold text-cyan-300 mb-1 block">Live AI Executive Insights Report (`https://civicflow-ai-b2144.web.app/`)</span>
-            <img src="deck_images/media_1789839904080.png" alt="AI Insights Report" class="img-frame max-h-56 mx-auto" />
+            <span class="text-[11px] font-bold text-cyan-300 mb-1 block">Live Authority AI Executive Insights Report</span>
+            <img src="deck_images/media_1790081094119.png" alt="AI Insights Report" class="img-frame max-h-64 sm:max-h-80 md:max-h-[380px] mx-auto" />
           </div>
         </div>
       </div>
@@ -524,7 +529,7 @@
           <div class="space-y-3 text-xs">
             <div class="p-3 rounded-xl bg-green-950/40 border border-green-500/30">
               <strong class="text-green-300 block mb-1">🛡️ Configured Render Environment Variables</strong>
-              Verified production setup for <code class="text-cyan-300">SENDER_EMAIL</code> (<code class="text-gray-300">civicflow.grievance.ai@gmail.com</code>) & App Passwords.
+              Verified production setup for <code class="text-cyan-300">SENDER_EMAIL</code> (<code class="text-gray-300">civicflow.grievance.ai@gmail.com</code>), <code class="text-cyan-300">SENDER_PASSWORD</code> & <code class="text-cyan-300">GEMINI_API_KEY</code>.
             </div>
             <div class="p-3 rounded-xl bg-purple-950/40 border border-purple-500/30">
               <strong class="text-purple-300 block mb-1">🌐 Custom IPv4 Socket Transport</strong>
@@ -532,9 +537,15 @@
             </div>
           </div>
 
-          <div class="text-center">
-            <span class="text-[11px] font-bold text-green-300 mb-1 block">Verified Render Production Env Vars</span>
-            <img src="deck_images/media_1789889404026.png" alt="Render Env Vars" class="img-frame max-h-56 mx-auto" />
+          <div class="space-y-3">
+            <div class="text-center">
+              <span class="text-[11px] font-bold text-green-300 mb-1 block">Verified Render Production Env Vars</span>
+              <img src="deck_images/media_1790081457111.png" alt="Render Env Vars" class="img-frame max-h-48 sm:max-h-60 md:max-h-64 mx-auto" />
+            </div>
+            <div class="text-center">
+              <span class="text-[11px] font-bold text-purple-300 mb-1 block">Live Active Render Backend Deployment</span>
+              <img src="deck_images/media_1790081483884.png" alt="Render Live Service Status" class="img-frame max-h-48 sm:max-h-60 md:max-h-64 mx-auto" />
+            </div>
           </div>
         </div>
       </div>
@@ -550,7 +561,7 @@
           <div class="space-y-3 text-xs">
             <div class="p-3 rounded-xl bg-cyan-950/40 border border-cyan-500/30">
               <strong class="text-cyan-300 block mb-1">✉️ Single-Line Expansion into Official Letters</strong>
-              Transforms brief citizen complaints (e.g., <em>"Dump yard filled with waste"</em>) into multi-paragraph formal letters with official titles (`Municipal Commissioner / Executive Officer`), formal salutations (`Respected Sir/Madam`), health impact warnings, and call-to-action requests.
+              Transforms brief citizen complaints (e.g., <em>"The Roads Are not cleaned properly near my house"</em>) into multi-paragraph formal letters with official titles (`To: General Authority`), formal salutations (`Respected Sir/Madam`), health impact warnings, and call-to-action requests.
             </div>
 
             <div class="p-3 rounded-xl bg-purple-950/40 border border-purple-500/30">
@@ -560,8 +571,8 @@
           </div>
 
           <div class="text-center">
-            <span class="text-[11px] font-bold text-cyan-300 mb-1 block">Actual Received Civic Grievance Email</span>
-            <img src="deck_images/media_1790019567230.png" alt="Received Email Detail" class="img-frame max-h-56 mx-auto" />
+            <span class="text-[11px] font-bold text-cyan-300 mb-1 block">Actual Received Civic Grievance Email (Gmail)</span>
+            <img src="deck_images/media_1790081546249.png" alt="Received Formal Grievance Email" class="img-frame max-h-72 sm:max-h-96 md:max-h-[420px] mx-auto" />
           </div>
         </div>
       </div>
@@ -575,8 +586,8 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
           <div class="text-center">
-            <span class="text-[11px] font-bold text-purple-300 mb-1 block">Gmail Inbox Dispatch Verification</span>
-            <img src="deck_images/media_1790014947400.png" alt="Gmail Inbox Verification" class="img-frame max-h-56 mx-auto" />
+            <span class="text-[11px] font-bold text-purple-300 mb-1 block">Received Citizen Submission Confirmation Email</span>
+            <img src="deck_images/media_1790081579126.png" alt="Citizen Confirmation Email" class="img-frame max-h-72 sm:max-h-96 md:max-h-[420px] mx-auto" />
           </div>
 
           <div class="space-y-3 text-xs">
@@ -594,7 +605,7 @@
       </div>
     </div>
 
-    <!-- SLIDE 15 [NEW]: Dynamic Location Fallbacks & OpenStreetMap GPS -->
+    <!-- SLIDE 15 [NEW]: Dynamic Location Fallbacks & Google Maps URLs -->
     <div class="slide w-full max-w-5xl" id="slide-15">
       <div class="glass-card rounded-2xl p-6 md:p-10 shadow-2xl">
         <span class="text-xs font-semibold uppercase tracking-wider text-amber-400">Slide 15 · Location Engine</span>
@@ -609,28 +620,113 @@
 
             <div class="p-3 rounded-xl bg-cyan-950/40 border border-cyan-500/30">
               <strong class="text-cyan-300 block mb-1">📌 Clickable Google Maps Integration</strong>
-              Generates direct lat/lng coordinates map links (`https://www.google.com/maps?q=16.483,80.685`) or encoded city search links for field officers.
+              Generates direct lat/lng coordinates map links (<code class="text-white">https://www.google.com/maps?q=16.483,80.685</code>) dispatched directly inside formal grievance emails for field officers.
             </div>
           </div>
 
           <div class="space-y-3">
             <div class="text-center">
-              <span class="text-[11px] font-bold text-amber-300 mb-1 block">Live Location Details & OpenStreetMap Leaflet Map</span>
-              <img src="deck_images/media_1790078221630.png" alt="Leaflet Location Map & Geocoded Details" class="img-frame max-h-44 mx-auto" />
+              <span class="text-[11px] font-bold text-cyan-300 mb-1 block">1. Received Email with Coordinates & Direct Google Maps Link</span>
+              <img src="deck_images/media_1790082214104.png" alt="Received Email with Google Maps Link" class="img-frame max-h-48 sm:max-h-60 md:max-h-64 mx-auto" />
             </div>
             <div class="text-center">
-              <span class="text-[11px] font-bold text-purple-300 mb-1 block">Render Server logs & Google Maps URL Dispatch</span>
-              <img src="deck_images/media_1790019428663.png" alt="Render Logs" class="img-frame max-h-44 mx-auto" />
+              <span class="text-[11px] font-bold text-amber-300 mb-1 block">2. Clicked Google Maps Live Pin View (16.483269, 80.685425)</span>
+              <img src="deck_images/media_1790082205825.png" alt="Google Maps Live Pin View" class="img-frame max-h-48 sm:max-h-60 md:max-h-64 mx-auto" />
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- SLIDE 16 [NEW]: Multimodal Speech & Image Compression -->
+    <!-- SLIDE 16 [NEW]: Native Android Mobile Application & APK -->
     <div class="slide w-full max-w-5xl" id="slide-16">
       <div class="glass-card rounded-2xl p-6 md:p-10 shadow-2xl">
-        <span class="text-xs font-semibold uppercase tracking-wider text-emerald-400">Slide 16 · Multimodal Intake</span>
+        <span class="text-xs font-semibold uppercase tracking-wider text-green-400">Slide 16 · Mobile Ecosystem</span>
+        <h2 class="text-2xl md:text-3xl font-bold mt-1 mb-4">Native Android Mobile Application (`CivicFlow-AI.apk`)</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+          <div class="space-y-3 text-xs">
+            <div class="p-3 rounded-xl bg-green-950/40 border border-green-500/30">
+              <strong class="text-green-300 block mb-1">📱 Built Native Android Application</strong>
+              Fully compiled Android APK optimized for smartphones and field operations. Provides single-tap complaint logging, real-time tracking, and push notifications for citizens.
+            </div>
+
+            <div class="p-3 rounded-xl bg-purple-950/40 border border-purple-500/30">
+              <strong class="text-purple-300 block mb-1">🚀 Mobile Field Readiness</strong>
+              Empowers municipal workers and field inspectors to take photos on-site, view nearby 450m incident hotspots, and update complaint statuses directly from Android devices.
+            </div>
+
+            <div class="p-3 rounded-xl bg-cyan-950/40 border border-cyan-500/30">
+              <strong class="text-cyan-300 block mb-1">💾 Offline Local Storage & Queue</strong>
+              Stores draft grievances in local phone database when cellular coverage drops, auto-dispatching to server when network reconnects.
+            </div>
+          </div>
+
+          <div class="p-5 rounded-xl bg-white/5 border border-white/10 text-xs space-y-4">
+            <h3 class="font-bold text-green-300 text-sm flex items-center gap-2">
+              <span>🤖</span> Android Native App Highlights
+            </h3>
+            <div class="space-y-2">
+              <div class="p-2.5 rounded bg-white/5 border border-white/5 flex justify-between items-center">
+                <span class="text-gray-300">Target OS:</span>
+                <span class="font-mono text-cyan-300">Android 8.0+ (API 26+)</span>
+              </div>
+              <div class="p-2.5 rounded bg-white/5 border border-white/5 flex justify-between items-center">
+                <span class="text-gray-300">Hardware Acceleration:</span>
+                <span class="font-mono text-purple-300">Snapdragon NPU Optimized</span>
+              </div>
+              <div class="p-2.5 rounded bg-white/5 border border-white/5 flex justify-between items-center">
+                <span class="text-gray-300">Intake Speed:</span>
+                <span class="font-mono text-emerald-300">&lt; 3 Seconds per Complaint</span>
+              </div>
+              <div class="p-2.5 rounded bg-white/5 border border-white/5 flex justify-between items-center">
+                <span class="text-gray-300">Distribution:</span>
+                <span class="font-mono text-amber-300">Direct Android APK Package</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 17 [NEW]: Android On-Device NPU Acceleration & Native Hardware Sync -->
+    <div class="slide w-full max-w-5xl" id="slide-17">
+      <div class="glass-card rounded-2xl p-6 md:p-10 shadow-2xl">
+        <span class="text-xs font-semibold uppercase tracking-wider text-blue-400">Slide 17 · Android Architecture</span>
+        <h2 class="text-2xl md:text-3xl font-bold mt-1 mb-4">Android On-Device NPU Acceleration & Sensor Sync</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="p-5 rounded-xl bg-white/5 border border-white/10 text-xs space-y-3">
+            <h3 class="font-bold text-blue-300 text-sm flex items-center gap-2">
+              <span>⚡</span> Snapdragon NPU Hardware Acceleration
+            </h3>
+            <p class="text-gray-300 leading-relaxed">
+              Executes on-device N-gram classification directly inside the Android runtime. Analyzes text & emergency flags with 0ms latency without transmitting sensitive unverified data to cloud servers.
+            </p>
+            <div class="code-box p-2.5 rounded font-mono text-[10px] text-cyan-300">
+              NpuEngine.classify(complaintText) -> { dept: "Municipal", score: 88 }
+            </div>
+          </div>
+
+          <div class="p-5 rounded-xl bg-white/5 border border-white/10 text-xs space-y-3">
+            <h3 class="font-bold text-purple-300 text-sm flex items-center gap-2">
+              <span>🔌</span> Native Hardware Sensor Hooks
+            </h3>
+            <p class="text-gray-300 leading-relaxed">
+              Direct integration with native Android APIs: <code class="text-cyan-300">Camera2 API</code> for client compressed photo capture, <code class="text-cyan-300">SpeechRecognizer</code> for Indian English voice dictation, and <code class="text-cyan-300">FusedLocationProviderClient</code> for precise GPS pins.
+            </p>
+            <div class="code-box p-2.5 rounded font-mono text-[10px] text-purple-300">
+              fusedLocationClient.getLastLocation().addOnSuccessListener { ... }
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 18: Multimodal Speech & Image Compression -->
+    <div class="slide w-full max-w-5xl" id="slide-18">
+      <div class="glass-card rounded-2xl p-6 md:p-10 shadow-2xl">
+        <span class="text-xs font-semibold uppercase tracking-wider text-emerald-400">Slide 18 · Multimodal Intake</span>
         <h2 class="text-2xl md:text-3xl font-bold mt-1 mb-4">Indian English Speech-to-Text & Canvas Compression</h2>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -661,19 +757,19 @@
       </div>
     </div>
 
-    <!-- SLIDE 17: iQOO City Battles Scoring & Fit -->
-    <div class="slide w-full max-w-5xl" id="slide-17">
+    <!-- SLIDE 19: iQOO City Battles Scoring & Fit -->
+    <div class="slide w-full max-w-5xl" id="slide-19">
       <div class="glass-card rounded-2xl p-6 md:p-10 shadow-2xl">
-        <span class="text-xs font-semibold uppercase tracking-wider text-purple-400">Slide 17 · Battle Alignment</span>
+        <span class="text-xs font-semibold uppercase tracking-wider text-purple-400">Slide 19 · Battle Alignment</span>
         <h2 class="text-2xl md:text-3xl font-bold mt-1 mb-4">TeamGaneshaa · iQOO Scoring Breakdown</h2>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div class="p-5 rounded-xl bg-white/5 border border-white/10">
             <h3 class="font-bold text-purple-300 text-sm mb-3">🎯 Official Scoring Criteria Alignment</h3>
             <ul class="text-xs space-y-2 text-gray-300">
-              <li>• <strong>End Product Quality (30%):</strong> Production platform deployed live on Firebase & Render.</li>
+              <li>• <strong>End Product Quality (30%):</strong> Production platform deployed live on Firebase, Render & Native Android APK.</li>
               <li>• <strong>Novelty & Impact (20%):</strong> Instant 112 emergency routing & 450m geographic clustering.</li>
-              <li>• <strong>Creative Phone Use (15%):</strong> Indian English speech-to-text, camera compression, GPS mapping.</li>
+              <li>• <strong>Creative Phone Use (15%):</strong> Native Android app, Indian English speech-to-text, camera compression, GPS mapping.</li>
               <li>• <strong>Technical Depth (15%):</strong> Snapdragon NPU offline model + Gemini Flash hybrid AI engine.</li>
               <li>• <strong>Office Kit (10%):</strong> Field report intake mirrored directly to laptop command desk.</li>
             </ul>
@@ -700,8 +796,8 @@
       </div>
     </div>
 
-    <!-- SLIDE 18: Live Demo Links & Thank You -->
-    <div class="slide w-full max-w-5xl" id="slide-18">
+    <!-- SLIDE 20: Live Demo Links & Thank You -->
+    <div class="slide w-full max-w-5xl" id="slide-20">
       <div class="glass-card rounded-2xl p-8 md:p-10 shadow-2xl text-center relative overflow-hidden border border-purple-500/30">
         <h1 class="text-4xl md:text-5xl font-black gradient-text mb-2">CIVICFLOW AI</h1>
         <p class="text-base font-medium text-gray-200 mb-4">From Citizen Voice ➔ Action</p>
@@ -711,6 +807,7 @@
           <span class="px-3 py-1 rounded-full bg-white/10">• Voice</span>
           <span class="px-3 py-1 rounded-full bg-white/10">• Camera</span>
           <span class="px-3 py-1 rounded-full bg-white/10">• GPS</span>
+          <span class="px-3 py-1 rounded-full bg-green-500/30 text-green-300 font-bold">• Android App</span>
           <span class="px-3 py-1 rounded-full bg-purple-500/30 text-purple-300 font-bold">• Hybrid AI</span>
           <span class="px-3 py-1 rounded-full bg-cyan-500/30 text-cyan-300 font-bold">• 112 Action</span>
         </div>
@@ -740,12 +837,12 @@
   <!-- Footer Navigation Info -->
   <footer class="mt-4 text-center text-xs text-[var(--muted)] border-t border-white/10 pt-3 flex flex-col sm:flex-row justify-between items-center gap-2">
     <div>Use <kbd class="px-1.5 py-0.5 bg-white/10 rounded font-mono text-purple-300">←</kbd> or <kbd class="px-1.5 py-0.5 bg-white/10 rounded font-mono text-purple-300">→</kbd> arrow keys to navigate slides.</div>
-    <div id="footerSlideCounter" class="font-mono text-xs text-purple-300">Slide 1 / 18</div>
+    <div id="footerSlideCounter" class="font-mono text-xs text-purple-300">Slide 1 / 20</div>
   </footer>
 
   <script>
     let currentSlide = 1;
-    const totalSlides = 18;
+    const totalSlides = 20;
 
     function updateUI() {
       for (let i = 1; i <= totalSlides; i++) {
