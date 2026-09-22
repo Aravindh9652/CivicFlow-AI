@@ -61,6 +61,25 @@
       background: rgba(8, 11, 30, 0.95);
       border: 1px solid rgba(139, 92, 246, 0.35);
     }
+    @media print {
+      header, footer {
+        display: none !important;
+      }
+      body {
+        background-color: #070a1a !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        padding: 0 !important;
+      }
+      .slide {
+        display: block !important;
+        opacity: 1 !important;
+        transform: none !important;
+        page-break-after: always !important;
+        break-after: page !important;
+        margin-bottom: 2rem !important;
+      }
+    }
   </style>
 </head>
 <body class="min-h-screen p-3 sm:p-5 md:p-6 flex flex-col justify-between select-none">
